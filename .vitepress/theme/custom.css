@@ -1,73 +1,163 @@
 /**
- * @file LatticeDX Docs — Custom Brand Theme & Layout Styles
+ * @file LatticeDX Docs — Refined Industrial Editorial Theme
  * @copyright (C) 2026 CTU-OpenPaw
  * @license Apache-2.0
  * SPDX-License-Identifier: Apache-2.0
  */
 
 :root {
-  --vp-c-brand-1: #ea580c;
-  --vp-c-brand-2: #f97316;
-  --vp-c-brand-3: #c2410c;
-  --vp-c-brand-soft: rgba(234, 88, 12, 0.14);
+  --ldx-bg: #FAFAF9;
+  --ldx-surface: #FFFFFF;
+  --ldx-surface-alt: #F2F0EA;
+  --ldx-border: #E7E5E4;
+  --ldx-border-strong: #D6D3D1;
+  --ldx-ink: #0C0A09;
+  --ldx-ink-2: #44403C;
+  --ldx-muted: #78716C;
+  --ldx-accent: #D94E1F;
+  --ldx-accent-text: #AF4204;
+  --ldx-accent-soft: rgba(217, 78, 31, 0.10);
+  --ldx-flow: #2563EB;
+  --ldx-flow-soft: rgba(37, 99, 235, 0.10);
 
-  --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: linear-gradient(135deg, #ea580c 0%, #f59e0b 55%, #f97316 100%);
-  --vp-home-hero-image-background-image: radial-gradient(
-    circle,
-    rgba(249, 115, 22, 0.22) 0%,
-    rgba(245, 158, 11, 0.08) 50%,
-    transparent 72%
-  );
-  --vp-home-hero-image-filter: blur(44px);
+  --vp-font-family-base: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --vp-font-family-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --vp-c-bg: var(--ldx-bg);
+  --vp-c-bg-alt: var(--ldx-surface-alt);
+  --vp-c-bg-elv: var(--ldx-surface);
+  --vp-c-bg-soft: var(--ldx-surface-alt);
+  --vp-c-border: var(--ldx-border);
+  --vp-c-divider: var(--ldx-border);
+  --vp-c-gutter: var(--ldx-border);
+  --vp-c-text-1: var(--ldx-ink);
+  --vp-c-text-2: var(--ldx-ink-2);
+  --vp-c-text-3: var(--ldx-muted);
+  --vp-c-brand-1: var(--ldx-accent-text);
+  --vp-c-brand-2: var(--ldx-accent);
+  --vp-c-brand-3: var(--ldx-accent);
+  --vp-c-brand-soft: var(--ldx-accent-soft);
+  --vp-button-brand-bg: var(--ldx-accent);
+  --vp-button-brand-hover-bg: var(--ldx-accent-text);
+  --vp-button-brand-text: #FFFFFF;
+  --vp-code-block-bg: var(--ldx-surface);
+  --vp-code-bg: var(--ldx-surface-alt);
+  --vp-code-color: var(--ldx-ink);
+  --vp-nav-bg-color: rgba(250, 250, 249, 0.92);
+  --vp-sidebar-bg-color: var(--ldx-bg);
 }
 
 .dark {
-  --vp-c-brand-1: #fb923c;
-  --vp-c-brand-2: #f97316;
-  --vp-c-brand-3: #ea580c;
-  --vp-c-brand-soft: rgba(251, 146, 60, 0.16);
+  --ldx-bg: #0B0D11;
+  --ldx-surface: #12151C;
+  --ldx-surface-alt: #171715;
+  --ldx-border: #232732;
+  --ldx-border-strong: #323846;
+  --ldx-ink: #F5F5F4;
+  --ldx-ink-2: #A1A1AA;
+  --ldx-muted: #71717A;
+  --ldx-accent: #F06434;
+  --ldx-accent-text: #FB923C;
+  --ldx-accent-soft: rgba(240, 100, 52, 0.14);
+  --ldx-flow: #60A5FA;
+  --ldx-flow-soft: rgba(96, 165, 250, 0.14);
 
-  --vp-c-bg: #0b1120;
-  --vp-c-bg-alt: #0f172a;
-  --vp-c-bg-elv: #111c33;
-  --vp-c-bg-soft: #16223b;
-  --vp-c-border: #233252;
-  --vp-c-divider: #1e293b;
+  --vp-button-brand-text: #0C0A09;
+  --vp-code-block-bg: var(--ldx-surface);
+  --vp-code-bg: var(--ldx-surface-alt);
+  --vp-code-color: var(--ldx-ink);
+  --vp-nav-bg-color: rgba(11, 13, 17, 0.92);
+  --vp-sidebar-bg-color: var(--ldx-bg);
 }
 
-/* Navbar logo crisp sizing */
+/* Navbar & chrome precision */
+.VPNavBar {
+  border-bottom: 1px solid var(--ldx-border);
+}
+
 .VPNavBarTitle .logo {
-  height: 28px;
+  height: 26px;
   width: auto;
-  border-radius: 6px;
+  border-radius: 5px;
 }
 
-/* Hero image framing */
-.VPHero .image-src {
-  max-height: 300px;
-  border-radius: 16px;
+.VPNavBarTitle .title {
+  font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
-/* Mermaid diagram container polish & responsive overflow */
-.vp-doc .mermaid {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 1.5rem 0;
-  padding: 1.25rem;
-  border-radius: 12px;
-  border: 1px solid var(--vp-c-divider);
-  background-color: var(--vp-c-bg-soft);
-  overflow-x: auto;
+.VPSidebar {
+  border-right: 1px solid var(--ldx-border);
 }
 
-.vp-doc .mermaid svg {
-  max-width: 100%;
-  height: auto;
+.VPSidebarItem .text {
+  line-height: 1.5;
 }
 
-/* Responsive tables with clean styling */
+/* Editorial home container reset */
+.VPHome {
+  padding-bottom: 48px !important;
+  margin-bottom: 0 !important;
+}
+
+/* Documentation typography & Vietnamese diacritic safety */
+.vp-doc h1 {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ldx-border);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.28;
+  letter-spacing: -0.02em;
+  color: var(--ldx-ink);
+}
+
+.vp-doc h2 {
+  margin-top: 2.5rem;
+  margin-bottom: 0.875rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--ldx-border);
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  color: var(--ldx-ink);
+}
+
+.vp-doc h3 {
+  margin-top: 1.75rem;
+  margin-bottom: 0.625rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--ldx-ink);
+}
+
+.vp-doc h4 {
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--ldx-ink);
+}
+
+.vp-doc p,
+.vp-doc li {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--ldx-ink-2);
+  max-width: 72ch;
+}
+
+.vp-doc a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+/* Hairline tables with tabular numerals */
 .vp-doc table {
   display: block;
   width: 100%;
@@ -75,26 +165,75 @@
   overflow-x: auto;
   border-collapse: collapse;
   margin: 1.25rem 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
 }
 
 .vp-doc th {
-  background-color: var(--vp-c-bg-soft);
+  background-color: var(--ldx-surface-alt);
+  color: var(--ldx-ink);
   font-weight: 600;
+  text-align: left;
   white-space: nowrap;
 }
 
 .vp-doc th,
 .vp-doc td {
-  border: 1px solid var(--vp-c-divider);
+  border: 1px solid var(--ldx-border);
   padding: 0.625rem 0.875rem;
 }
 
-/* Custom block accents */
+.vp-doc td {
+  color: var(--ldx-ink-2);
+}
+
+/* Code containers */
+.vp-doc div[class*='language-'],
+.vp-doc .vp-code-group .tabs {
+  border: 1px solid var(--ldx-border);
+}
+
+.vp-doc div[class*='language-'] {
+  border-radius: 6px;
+}
+
+.vp-doc :not(pre) > code {
+  font-size: 0.8125rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--ldx-border);
+  background-color: var(--ldx-surface-alt);
+}
+
+.vp-doc pre code {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+/* Custom callout blocks */
+.vp-doc .custom-block {
+  border-radius: 6px;
+  border: 1px solid var(--ldx-border);
+  border-left-width: 3px;
+  background-color: var(--ldx-surface);
+}
+
 .vp-doc .custom-block.tip {
-  border-color: var(--vp-c-brand-2);
+  border-left-color: var(--ldx-accent);
+}
+
+.vp-doc .custom-block.info {
+  border-left-color: var(--ldx-flow);
 }
 
 /* Footer attribution spacing */
+.VPFooter {
+  border-top: 1px solid var(--ldx-border);
+  background-color: var(--ldx-bg);
+}
+
 .VPFooter .message {
-  line-height: 1.6;
+  line-height: 1.65;
+  color: var(--ldx-ink-2);
 }
