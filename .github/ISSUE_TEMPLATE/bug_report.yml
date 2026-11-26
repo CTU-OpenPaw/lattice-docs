@@ -1,0 +1,57 @@
+# @file LatticeDX Documentation Portal
+# @author CTU-OpenPaw
+# @copyright (C) 2026 CTU-OpenPaw
+# @license Apache-2.0
+# @see https://github.com/CTU-OpenPaw/lattice-docs
+# SPDX-License-Identifier: Apache-2.0
+name: Báo lỗi tài liệu / Docs Bug Report
+description: Báo cáo liên kết hỏng, lỗi hiển thị VitePress/Mermaid hoặc thông tin sai lệch so với LatticeDX 0.4.2 / Report a broken link, build issue, or technical inaccuracy.
+title: "[Docs Bug]: "
+labels: ["bug", "documentation", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Cảm ơn bạn đã góp ý cho **LatticeDX Documentation Portal (`0.4.2`)**. Vui lòng **không** đính kèm secret, token, `.env` hoặc dữ liệu cá nhân.
+  - type: dropdown
+    id: language_scope
+    attributes:
+      label: Ngôn ngữ bị ảnh hưởng / Affected Locale
+      options:
+        - "Cả hai / Both (/ and /en/)"
+        - "Tiếng Việt (/)"
+        - "English (/en/)"
+        - "VitePress Build / Theme / GitHub Pages"
+    validations:
+      required: true
+  - type: input
+    id: page_url
+    attributes:
+      label: Đường dẫn trang / Page URL or File Path
+      description: URL trên https://ctu-openpaw.github.io/lattice-docs/ hoặc đường dẫn tệp Markdown.
+      placeholder: "https://ctu-openpaw.github.io/lattice-docs/modules/latticeflow-v2"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Mô tả lỗi / Issue Description
+      description: Mô tả rõ sai lệch kỹ thuật so với mã nguồn `CTU-OpenPaw/lattice-dx` (`0.4.2`), lỗi build hoặc lỗi hiển thị.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Nội dung kỳ vọng / Expected Fix
+      description: Mô tả nội dung đúng hoặc bước khắc phục đề xuất.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Xác nhận / Pre-Submit Checklist
+      options:
+        - label: Tôi xác nhận báo cáo không chứa secret, token, `.env` hoặc dữ liệu cá nhân.
+          required: true
+        - label: Tôi đã kiểm tra các issue hiện có trên `CTU-OpenPaw/lattice-docs` để tránh trùng lặp.
+          required: true

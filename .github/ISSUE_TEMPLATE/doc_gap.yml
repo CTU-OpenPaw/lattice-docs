@@ -1,0 +1,49 @@
+# @file LatticeDX Documentation Portal
+# @author CTU-OpenPaw
+# @copyright (C) 2026 CTU-OpenPaw
+# @license Apache-2.0
+# @see https://github.com/CTU-OpenPaw/lattice-docs
+# SPDX-License-Identifier: Apache-2.0
+name: Đề xuất bổ sung tài liệu / Documentation Gap
+description: Đề xuất thêm hướng dẫn, sơ đồ kiến trúc hoặc ví dụ song ngữ VI + EN cho LatticeDX 0.4.2 / Request missing bilingual documentation or guides.
+title: "[Doc Gap]: "
+labels: ["documentation", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Đề xuất nội dung mới cho **LatticeDX Documentation Portal (`0.4.2`)**. Mọi tài liệu mới cần bảo đảm song ngữ **Tiếng Việt (`/`) + English (`/en/`)**, thuần **Pure-OSI** và khóa phiên bản **`< 1.0.0` (`0.4.2`)**.
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Miền tài liệu / Documentation Domain
+      options:
+        - "1. Overview & Architecture (/guide/, /en/guide/)"
+        - "2. Getting Started (/getting-started/, /en/getting-started/)"
+        - "3. Core Modules & Features (/modules/, /en/modules/)"
+        - "4. API, Security & Multi-Tenant (/security/, /en/security/)"
+        - "5. Operations, Testing & DR (/operations/, /en/operations/)"
+        - "6. OSS Governance & PoF (/oss/, /en/oss/)"
+    validations:
+      required: true
+  - type: textarea
+    id: gap_details
+    attributes:
+      label: Nội dung còn thiếu / What Documentation Is Needed?
+      description: Liệt kê chủ đề, API, module hoặc kịch bản vận hành thực tế trong `CTU-OpenPaw/lattice-dx` cần được tài liệu hóa.
+    validations:
+      required: true
+  - type: input
+    id: source_ref
+    attributes:
+      label: Tham chiếu mã nguồn trong `lattice-dx` / Source Reference (Optional)
+      placeholder: "e.g., plugins/nocobase/plugin-dxos-studio/src/server/..."
+    validations:
+      required: false
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Xác nhận / Pre-Submit Checklist
+      options:
+        - label: Tôi xác nhận đề xuất không chứa secret, token hoặc dữ liệu nhạy cảm.
+          required: true

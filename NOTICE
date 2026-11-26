@@ -1,0 +1,46 @@
+LatticeDX Documentation Portal (CTU-OpenPaw/lattice-docs)
+Copyright 2026 CTU-OpenPaw
+
+This product includes documentation, architectural diagrams, and visual assets
+developed by CTU-OpenPaw (https://github.com/CTU-OpenPaw/lattice-docs) for
+LatticeDX (https://github.com/CTU-OpenPaw/lattice-dx).
+
+================================================================================
+1. First-Party Documentation & Visual Assets (Apache-2.0)
+================================================================================
+All original bilingual (Vietnamese and English) Markdown documentation,
+VitePress configuration/theme extensions, workflow files, and first-party
+visual assets (architecture diagrams, branding, and screenshots) authored by
+CTU-OpenPaw in this repository are licensed under the Apache License, Version 2.0
+(see root LICENSE and COPYRIGHT.txt).
+
+================================================================================
+2. Documentation Build & Rendering Tooling (Pure-OSI MIT)
+================================================================================
+This documentation portal is built using strictly OSI-approved open-source
+tooling:
+
+- VitePress — MIT License (https://github.com/vuejs/vitepress)
+  Static site generator powering the bilingual documentation portal.
+- vitepress-plugin-mermaid — MIT License (https://github.com/emersonbottero/vitepress-plugin-mermaid)
+  VitePress integration for declarative Mermaid diagram rendering.
+- mermaid — MIT License (https://github.com/mermaid-js/mermaid)
+  Diagramming and charting library used for architecture and workflow diagrams.
+
+================================================================================
+3. External Host Runtime Attribution (NocoBase Clause 5.2)
+================================================================================
+LatticeDX (v0.4.2) builds its 7 first-party Pure-OSI Apache-2.0 plugins with
+"nocobase": { "sdkProvidedByHost": true } targeting the external NocoBase host
+OCI runtime (nocobase/nocobase:2.2.50, digest
+sha256:04b75164936e7314ef74d82844bc56c9f34ed7ff1ca976ca53ffac2d3c88d777).
+
+In accordance with NocoBase License Agreement Clause 5.2, this repository and
+documentation portal preserve upstream NocoBase attribution:
+- "Powered by NocoBase"
+- Host Version: v2.2.50
+- Upstream Website: https://www.nocobase.com
+- License Settings reference preserved across LatticeDX documentation and UI.
+
+Zero NocoBase upstream source code or AGPL/Commercial packages are copied,
+bundled, or redistributed in CTU-OpenPaw/lattice-docs or CTU-OpenPaw/lattice-dx.

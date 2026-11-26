@@ -1,0 +1,30 @@
+================================================================================
+LatticeDX Documentation Portal (CTU-OpenPaw/lattice-docs) — v0.4.2
+Copyright (C) 2026 CTU-OpenPaw (https://github.com/CTU-OpenPaw/lattice-docs)
+All original documentation, diagrams, and configuration are licensed under
+Apache License 2.0.
+================================================================================
+
+Repository: https://github.com/CTU-OpenPaw/lattice-docs
+Live Portal: https://ctu-openpaw.github.io/lattice-docs/
+Core Platform: https://github.com/CTU-OpenPaw/lattice-dx (v0.4.2, Pure-OSI)
+
+1. Scope of Copyright
+All first-party Vietnamese (`/`) and English (`/en/`) documentation pages,
+VitePress configuration and theme files, GitHub Actions deployment workflows,
+issue/PR templates, and first-party visual showcase assets (architecture
+diagrams, CTU-OpenPaw branding, and LatticeDX screenshots) are original works
+by CTU-OpenPaw and distributed under the Apache License, Version 2.0 (see
+LICENSE and NOTICE).
+
+2. Pure-OSI Compliance & Version Policy
+- Version Lock: Strictly pre-1.0 (`0.4.2`), aligned with CTU-OpenPaw/lattice-dx.
+- Pure-OSI Guarantee: 100% OSI-approved tooling (`VitePress`, `mermaid`,
+  `vitepress-plugin-mermaid` under MIT) and Apache-2.0 content. Zero BSL-1.1,
+  zero proprietary assets, and zero embedded upstream NocoBase source code.
+- NocoBase Attribution: Preserves NocoBase 2.2.50 Clause 5.2 attribution
+  ("Powered by NocoBase", https://www.nocobase.com).
+
+3. Third-Party Tooling Notices
+Third-party npm packages installed during static site build retain their
+original MIT / OSI licenses and copyrights from their respective authors.
