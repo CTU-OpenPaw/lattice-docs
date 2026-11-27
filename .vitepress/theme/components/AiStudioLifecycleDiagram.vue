@@ -31,12 +31,12 @@ const meta = computed(() =>
     ? {
         title: 'Vòng đời DX-OS AI Studio, App Builder 2.0 & MCP/A2A',
         caption:
-          'Luồng thực thi ReAct qua 7 hồ sơ Agent, 20 Unified Tools (+ 4 công cụ IT/OT MCP), vòng đời App Builder 2.0 và cổng chuẩn hóa MCP / A2A.',
+          'Luồng ReAct phân nhánh ALLOW (createAuditedTool <-> Advisory Memory) và ASK (HITL Queue -> approveAction / rejectAction -> createAuditedTool) cùng đổ về Audit/OTel; App Builder 2.0 rẽ nhánh độc lập từ Versioned App.',
       }
     : {
         title: 'DX-OS AI Studio, App Builder 2.0 & MCP/A2A Lifecycle',
         caption:
-          'ReAct execution across 7 Agent Profiles, 20 Unified Tools (+ 4 IT/OT MCP tools), App Builder 2.0 lifecycle, and standardized MCP / A2A gateways.',
+          'ReAct branches into ALLOW tools (createAuditedTool <-> Advisory Memory) and ASK mutations (HITL Queue -> approveAction / rejectAction -> createAuditedTool), both emitting to Audit/OTel; App Builder 2.0 branches independently from Versioned App.',
       },
 );
 
@@ -46,20 +46,20 @@ const modes = computed<DiagramMode[]>(() => {
   const reactZones: DiagramZone[] = [
     {
       id: 'ai-control',
-      label: isVi ? 'Điều phối Hồ sơ, Bảo vệ PII & Định tuyến LLM' : 'Profile Control, PII Guard & LLM Routing',
+      label: isVi ? 'Điều phối Hồ sơ, Bảo vệ PII, LLM & Audit/OTel' : 'Profile Control, PII Guard, LLM & Audit/OTel',
       x: 16,
       y: 16,
-      width: 848,
-      height: 128,
+      width: 1056,
+      height: 120,
       kind: 'admin',
     },
     {
       id: 'ai-react',
-      label: isVi ? 'Vòng lặp ReAct & 20 Unified Tools (Tenant RLS)' : 'ReAct Execution & 20 Unified Tools (Tenant RLS)',
+      label: isVi ? 'Vòng lặp ReAct: Nhánh ALLOW <-> Memory & Nhánh ASK -> HITL' : 'ReAct Loop: ALLOW <-> Memory & ASK -> HITL Branches',
       x: 16,
-      y: 160,
-      width: 848,
-      height: 204,
+      y: 152,
+      width: 1056,
+      height: 236,
       kind: 'traffic',
     },
   ];
@@ -68,12 +68,12 @@ const modes = computed<DiagramMode[]>(() => {
     {
       id: 'profiles',
       title: isVi ? '7 Hồ sơ Agent' : '7 Agent Profiles',
-      sub: 'dxos-coordinator..analyst',
+      sub: 'dxos-* · 7 profiles',
       icon: 'bot',
       x: 32,
-      y: 56,
+      y: 52,
       width: 184,
-      height: 64,
+      height: 60,
       zoneId: 'ai-control',
       focal: true,
       inspector: isVi
@@ -99,10 +99,10 @@ const modes = computed<DiagramMode[]>(() => {
       title: isVi ? 'Cổng PII & Quota' : 'PII & Quota Gate',
       sub: '9 regex · 5k calls/d',
       icon: 'shield',
-      x: 244,
-      y: 56,
-      width: 184,
-      height: 64,
+      x: 308,
+      y: 52,
+      width: 196,
+      height: 60,
       zoneId: 'ai-control',
       inspector: isVi
         ? {
@@ -127,10 +127,10 @@ const modes = computed<DiagramMode[]>(() => {
       title: isVi ? 'Định tuyến LLM' : 'LLM Router',
       sub: 'ag/gemini-3.8-flash',
       icon: 'cpu',
-      x: 456,
-      y: 56,
-      width: 184,
-      height: 64,
+      x: 596,
+      y: 52,
+      width: 196,
+      height: 60,
       zoneId: 'ai-control',
       inspector: isVi
         ? {
@@ -152,13 +152,13 @@ const modes = computed<DiagramMode[]>(() => {
     },
     {
       id: 'audit_ledger',
-      title: isVi ? 'Nhật ký & Trace' : 'Audit & Traces',
+      title: isVi ? 'Audit & OTel Traces' : 'Audit & OTel Traces',
       sub: 'latticeAiAuditLogs',
       icon: 'database',
-      x: 668,
-      y: 56,
-      width: 184,
-      height: 64,
+      x: 868,
+      y: 52,
+      width: 188,
+      height: 60,
       zoneId: 'ai-control',
       inspector: isVi
         ? {
@@ -167,7 +167,7 @@ const modes = computed<DiagramMode[]>(() => {
             protocol: 'SQL Transaction · OTLP HTTP :4318',
             payloadOrSchema: 'latticeAiAuditLogs, latticeAiTraces, latticeAiQuotaUsage',
             responsibilities:
-              'Ghi lại mọi lời gọi công cụ đã ẩn danh PII, độ trễ p95, số token tiêu thụ và khóa chặt quyền chỉnh sửa trực tiếp từ phía client.',
+              'Nhận dấu vết từ cả hai nhánh ALLOW Tools và ASK (approveAction) sau khi ẩn danh PII, ghi chi phí token và độ trễ p95.',
           }
         : {
             role: 'Immutable AI audit log and OTel GenAI trace store',
@@ -175,120 +175,149 @@ const modes = computed<DiagramMode[]>(() => {
             protocol: 'SQL Transaction · OTLP HTTP :4318',
             payloadOrSchema: 'latticeAiAuditLogs, latticeAiTraces, latticeAiQuotaUsage',
             responsibilities:
-              'Records PII-redacted tool invocations, token costs, and OpenTelemetry span waterfalls in client-locked PostgreSQL 16 RLS tables.',
+              'Receives PII-redacted audit records and OTel GenAI waterfall spans from both ALLOW tool calls and ASK (approveAction) executions.',
           },
     },
     {
       id: 'react_loop',
       title: isVi ? 'Vòng lặp ReAct' : 'ReAct Loop',
-      sub: 'ALLOW | ASK · turns<=12',
+      sub: 'ALLOW | ASK · <=12',
       icon: 'workflow',
       x: 32,
-      y: 204,
+      y: 224,
       width: 184,
       height: 64,
       zoneId: 'ai-react',
       focal: true,
       inspector: isVi
         ? {
-            role: 'Bộ thực thi suy luận - hành động nhiều bước có kiểm soát',
+            role: 'Bộ thực thi suy luận - hành động phân nhánh theo quyền công cụ',
             packageOrPort: 'plugin-dxos-ai · plugin-dxos-studio',
             protocol: 'In-process ReAct · SSE surfaceEvents',
             payloadOrSchema: 'maxTurns: 5 (1..12) | mode: single | react',
             responsibilities:
-              'Điều phối chuỗi Thought-Action-Observation cho trợ lý chat và node ai.agent trong LatticeFlow; tách biệt công cụ ALLOW tự chạy và ASK chờ xác nhận.',
+              'Điều phối chuỗi Thought-Action-Observation; phân nhánh công cụ ALLOW chạy trực tiếp qua createAuditedTool và thao tác ASK vào hàng đợi HITL.',
           }
         : {
-            role: 'Bounded multi-turn Thought-Action-Observation loop',
+            role: 'Bounded multi-turn loop branching by tool permission',
             packageOrPort: 'plugin-dxos-ai · plugin-dxos-studio',
             protocol: 'In-process ReAct · SSE surfaceEvents',
             payloadOrSchema: 'maxTurns: 5 (1..12) | mode: single | react',
             responsibilities:
-              'Executes iterative tool calls for Studio chat and LatticeFlow ai.agent nodes, separating autonomous ALLOW calls from human-gated ASK actions.',
+              'Executes Thought-Action-Observation turns, branching autonomous ALLOW calls to createAuditedTool and mutating ASK calls to HITL Queue.',
           },
     },
     {
       id: 'unified_tools',
-      title: isVi ? '20 Unified Tools' : '20 Unified Tools',
+      title: isVi ? 'ALLOW Tools + RLS' : 'ALLOW Tools + RLS',
       sub: 'createAuditedTool+RLS',
       icon: 'box',
-      x: 244,
-      y: 204,
-      width: 184,
-      height: 64,
+      x: 308,
+      y: 184,
+      width: 204,
+      height: 60,
       zoneId: 'ai-react',
+      focal: true,
       inspector: isVi
         ? {
-            role: 'Kho 20 công cụ hợp nhất kèm 4 công cụ IT/OT MCP',
+            role: 'Thực thi 20 Unified Tools (+4 IT/OT MCP) trong vùng PG16 RLS',
             packageOrPort: 'ai-tools-core.js · mcp-itot-tools.js',
             protocol: 'JSON Schema · runWithTenantRls',
-            payloadOrSchema: '5 Schema + 2 Flow + 4 Surface + 6 Ops + 3 Memory (+4 IT/OT)',
+            payloadOrSchema: 'createAuditedTool() + SET LOCAL app.current_org',
             responsibilities:
-              'Mọi tool đều qua lớp bọc createAuditedTool để ép buộc ngữ cảnh app.current_org, xác thực schema và chặn ghi đè các bảng hệ thống được bảo vệ.',
+              'Thực thi trực tiếp các công cụ ALLOW và các tác vụ ASK đã được duyệt; tương tác hai chiều với Advisory Memory và ghi Audit/OTel.',
           }
         : {
-            role: '20 audited unified tools plus 4 IT/OT MCP tools',
+            role: 'Audited execution for ALLOW and approved ASK tools',
             packageOrPort: 'ai-tools-core.js · mcp-itot-tools.js',
             protocol: 'JSON Schema · runWithTenantRls',
-            payloadOrSchema: '5 Schema + 2 Flow + 4 Surface + 6 Ops + 3 Memory (+4 IT/OT)',
+            payloadOrSchema: 'createAuditedTool() + SET LOCAL app.current_org',
             responsibilities:
-              'Every tool runs inside createAuditedTool, enforcing app.current_org tenant RLS, strict JSON schema validation, and system-collection write protection.',
-          },
-    },
-    {
-      id: 'hitl_exec',
-      title: isVi ? 'Hàng đợi HITL' : 'HITL Queue',
-      sub: 'ASK · latticeAiApproval',
-      icon: 'lock',
-      x: 456,
-      y: 204,
-      width: 184,
-      height: 64,
-      zoneId: 'ai-react',
-      inspector: isVi
-        ? {
-            role: 'Cổng phê duyệt con người cho thao tác ghi có rủi ro',
-            packageOrPort: 'ai-hitl-executors.js · latticeAiApprovalQueue',
-            protocol: 'Human-in-the-Loop · RBAC',
-            payloadOrSchema: 'dxos_execute_record_action | dxos_alarm_action | dxos_provision_role_workspace',
-            responsibilities:
-              'Tạm giữ các đề xuất thay đổi nghiệp vụ, xóa bộ nhớ org hoặc cấp phát không gian làm việc cho tới khi người dùng hợp lệ xác nhận, đồng thời lọc bỏ PROTECTED_SERVER_FIELDS.',
-          }
-        : {
-            role: 'Human-in-the-loop gate for mutating tool calls',
-            packageOrPort: 'ai-hitl-executors.js · latticeAiApprovalQueue',
-            protocol: 'Human-in-the-Loop · RBAC',
-            payloadOrSchema: 'dxos_execute_record_action | dxos_alarm_action | dxos_provision_role_workspace',
-            responsibilities:
-              'Holds ASK-tier mutations, alarm escalations, and workspace provisioning in latticeAiApprovalQueue until authorized review while stripping PROTECTED_SERVER_FIELDS.',
+              'Executes ALLOW tools (and approved ASK mutations) inside app.current_org FORCE RLS, interacts with Advisory Memory, and logs Audit/OTel.',
           },
     },
     {
       id: 'memory_vault',
-      title: isVi ? 'Bộ nhớ Agent' : 'Agent Memory',
-      sub: 'latticeAiMemory · scope',
+      title: isVi ? 'Bộ nhớ Advisory' : 'Advisory Memory',
+      sub: 'latticeAiMemory · RLS',
       icon: 'key',
-      x: 668,
-      y: 204,
-      width: 184,
-      height: 64,
+      x: 616,
+      y: 184,
+      width: 204,
+      height: 60,
       zoneId: 'ai-react',
       inspector: isVi
         ? {
-            role: 'Bộ nhớ dài hạn phân tách theo org, agent và user',
+            role: 'Bộ nhớ dài hạn org/agent/user gắn cờ advisory chống chèn prompt',
             packageOrPort: 'ai-memory.js · latticeAiMemory',
-            protocol: 'Advisory Context Delimiter · RLS',
+            protocol: 'recallMemories / buildMemoryContextPrompt · RLS',
             payloadOrSchema: '<dxos_memory_context advisory="true">...</dxos_memory_context>',
             responsibilities:
-              'Cung cấp remember/recall/forget có kiểm soát quyền admin cho scope org/agent và bọc dữ liệu truy xuất trong thẻ advisory để chống chèn lệnh prompt.',
+              'Cung cấp remember/recall/forget trực tiếp cho luồng công cụ ALLOW; không phải đầu ra của hàng đợi phê duyệt HITL.',
           }
         : {
             role: 'Persistent scoped memory with prompt-injection fencing',
             packageOrPort: 'ai-memory.js · latticeAiMemory',
-            protocol: 'Advisory Context Delimiter · RLS',
+            protocol: 'recallMemories / buildMemoryContextPrompt · RLS',
             payloadOrSchema: '<dxos_memory_context advisory="true">...</dxos_memory_context>',
             responsibilities:
-              'Manages remember, recall, and forget operations across org, agent, and user scopes, wrapping recalled entries in untrusted advisory delimiters.',
+              'Provides remember, recall, and forget operations directly alongside ALLOW tools, wrapped in untrusted advisory delimiters.',
+          },
+    },
+    {
+      id: 'hitl_exec',
+      title: isVi ? 'Hàng đợi HITL (ASK)' : 'HITL Queue (ASK)',
+      sub: 'latticeAiApprovalQueue',
+      icon: 'lock',
+      x: 308,
+      y: 300,
+      width: 204,
+      height: 60,
+      zoneId: 'ai-react',
+      inspector: isVi
+        ? {
+            role: 'Hàng đợi phê duyệt con người cho thao tác ghi có rủi ro',
+            packageOrPort: 'ai-hitl-executors.js · latticeAiApprovalQueue',
+            protocol: 'Human-in-the-Loop · RBAC',
+            payloadOrSchema: 'dxos_execute_record_action | dxos_alarm_action | dxos_provision_role_workspace',
+            responsibilities:
+              'Giữ lại đề xuất thay đổi thuộc nhóm ASK cho tới khi quản trị viên hợp lệ xác nhận qua approveAction hoặc rejectAction.',
+          }
+        : {
+            role: 'Human-in-the-loop queue for mutating ASK calls',
+            packageOrPort: 'ai-hitl-executors.js · latticeAiApprovalQueue',
+            protocol: 'Human-in-the-Loop · RBAC',
+            payloadOrSchema: 'dxos_execute_record_action | dxos_alarm_action | dxos_provision_role_workspace',
+            responsibilities:
+              'Holds ASK-tier mutations, alarm actions, and workspace provisioning in latticeAiApprovalQueue pending operator confirmation.',
+          },
+    },
+    {
+      id: 'decide_approval',
+      title: isVi ? 'Duyệt / Từ chối HITL' : 'HITL Approve / Reject',
+      sub: ':approveAction | :reject',
+      icon: 'check-circle',
+      x: 616,
+      y: 300,
+      width: 204,
+      height: 60,
+      zoneId: 'ai-react',
+      inspector: isVi
+        ? {
+            role: 'Xác nhận quyết định phê duyệt và chuyển vào createAuditedTool',
+            packageOrPort: 'POST /api/dxosAi:approveAction | :rejectAction',
+            protocol: 'RBAC Check -> createAuditedTool() + Audit',
+            payloadOrSchema: 'Strips PROTECTED_SERVER_FIELDS · Decision: approved | rejected',
+            responsibilities:
+              'Khi người dùng chấp thuận, hệ thống lọc PROTECTED_SERVER_FIELDS, thực thi qua createAuditedTool và ghi dấu vết Audit/OTel.',
+          }
+        : {
+            role: 'Commits operator decision and runs createAuditedTool',
+            packageOrPort: 'POST /api/dxosAi:approveAction | :rejectAction',
+            protocol: 'RBAC Check -> createAuditedTool() + Audit',
+            payloadOrSchema: 'Strips PROTECTED_SERVER_FIELDS · Decision: approved | rejected',
+            responsibilities:
+              'On approval, strips PROTECTED_SERVER_FIELDS, executes via createAuditedTool inside tenant RLS, and emits Audit & OTel traces.',
           },
     },
   ];
@@ -304,32 +333,115 @@ const modes = computed<DiagramMode[]>(() => {
       label: 'Session',
       kind: 'primary',
       points: [
-        [124, 120],
-        [124, 204],
+        [124, 112],
+        [124, 202],
+        [184, 202],
+        [184, 224],
       ],
     },
     {
       id: 'r5',
       from: 'react_loop',
       to: 'react_loop',
-      label: isVi ? 'Thought/Obs' : 'Thought/Obs',
+      label: 'Thought/Obs',
       kind: 'flow',
       selfLoop: 'bottom',
     },
-    { id: 'r6', from: 'react_loop', to: 'unified_tools', label: 'ALLOW', kind: 'primary' },
-    { id: 'r7', from: 'unified_tools', to: 'hitl_exec', label: 'ASK', kind: 'flow' },
-    { id: 'r8', from: 'hitl_exec', to: 'memory_vault', label: 'Recall', kind: 'dashed' },
+    {
+      id: 'r6',
+      from: 'react_loop',
+      to: 'unified_tools',
+      label: 'ALLOW',
+      kind: 'primary',
+      points: [
+        [216, 240],
+        [262, 240],
+        [262, 214],
+        [308, 214],
+      ],
+    },
+    {
+      id: 'r7',
+      from: 'unified_tools',
+      to: 'memory_vault',
+      label: 'Remember',
+      kind: 'flow',
+      points: [
+        [512, 200],
+        [616, 200],
+      ],
+    },
+    {
+      id: 'r8',
+      from: 'memory_vault',
+      to: 'unified_tools',
+      label: 'Advisory',
+      kind: 'dashed',
+      points: [
+        [616, 228],
+        [512, 228],
+      ],
+    },
     {
       id: 'r9',
       from: 'unified_tools',
       to: 'audit_ledger',
-      label: 'Audit',
+      label: 'Audit & OTel',
       kind: 'flow',
       points: [
-        [336, 204],
-        [336, 152],
-        [760, 152],
-        [760, 120],
+        [410, 184],
+        [410, 140],
+        [940, 140],
+        [940, 112],
+      ],
+    },
+    {
+      id: 'r10',
+      from: 'react_loop',
+      to: 'hitl_exec',
+      label: 'ASK',
+      kind: 'primary',
+      points: [
+        [216, 272],
+        [262, 272],
+        [262, 330],
+        [308, 330],
+      ],
+    },
+    {
+      id: 'r11',
+      from: 'hitl_exec',
+      to: 'decide_approval',
+      label: 'Decide',
+      kind: 'primary',
+      points: [
+        [512, 330],
+        [616, 330],
+      ],
+    },
+    {
+      id: 'r12',
+      from: 'decide_approval',
+      to: 'unified_tools',
+      label: 'Exec Audited',
+      kind: 'flow',
+      points: [
+        [718, 300],
+        [718, 268],
+        [410, 268],
+        [410, 244],
+      ],
+    },
+    {
+      id: 'r13',
+      from: 'decide_approval',
+      to: 'audit_ledger',
+      label: 'HITL Trace',
+      kind: 'flow',
+      points: [
+        [820, 330],
+        [988, 330],
+        [988, 112],
       ],
     },
   ];
@@ -343,7 +455,7 @@ const modes = computed<DiagramMode[]>(() => {
       description: isVi
         ? 'Xác thực một trong 7 hồ sơ Agent theo cổng truy cập, sau đó kiểm tra hạn mức cuộc gọi/token theo ngày và ẩn danh PII đầu vào.'
         : 'Resolves one of the 7 Agent Profiles against portal RBAC, then checks daily org/user quotas and redacts sensitive PII tokens.',
-      route: 'POST /api/dxosAi:chat',
+      route: 'GET /api/dxosAi:portalAgents · POST /api/aiConversations:sendMessages',
       payload: 'orgDailyCalls <= 5000 · redactPiiText()',
       chips: ['7 Profiles', '9 PII Regex'],
     },
@@ -353,56 +465,56 @@ const modes = computed<DiagramMode[]>(() => {
       activeNodes: ['guardrails', 'llm_router', 'react_loop'],
       activeEdges: ['r2', 'r5'],
       description: isVi
-        ? 'Mô hình đề xuất lời gọi công cụ; vòng lặp ReAct thực thi tối đa maxTurns (mặc định 5, trần 12) và phát trạng thái qua SSE.'
-        : 'The routed LLM emits tool calls; the ReAct orchestrator iterates up to maxTurns (default 5, cap 12) while streaming SSE progress.',
+        ? 'Mô hình đề xuất lời gọi công cụ; vòng lặp ReAct (maxTurns <= 12) phân nhánh theo quyền ALLOW vs ASK.'
+        : 'The routed LLM emits tool calls; the ReAct loop (maxTurns <= 12) branches by tool permission into ALLOW vs ASK.',
       route: 'GET /api/dxosAi:surfaceEvents',
       payload: 'model: ag/gemini-3.8-flash | maxTurns: 5',
       chips: ['local-9router', 'SSE'],
     },
     {
       id: 'react-s3',
-      title: isVi ? 'Thực thi 20 Unified Tools' : 'Execute 20 Unified Tools',
-      activeNodes: ['react_loop', 'unified_tools', 'audit_ledger'],
-      activeEdges: ['r6', 'r3', 'r9'],
+      title: isVi ? 'Nhánh ALLOW <-> Advisory Memory & Audit' : 'ALLOW Tools <-> Advisory Memory & Audit',
+      activeNodes: ['react_loop', 'unified_tools', 'memory_vault', 'audit_ledger'],
+      activeEdges: ['r6', 'r7', 'r8', 'r9', 'r3'],
       description: isVi
-        ? 'Công cụ thuộc nhóm ALLOW chạy trực tiếp trong giao dịch PostgreSQL app.current_org và ghi dấu kiểm toán kèm chi phí token.'
-        : 'ALLOW tools execute directly inside the transaction-scoped app.current_org RLS context and persist token metrics to latticeAiAuditLogs.',
-      route: 'createAuditedTool()',
-      payload: 'SET LOCAL app.current_org = <orgId>',
-      chips: ['20 Tools', 'FORCE RLS'],
+        ? 'Công cụ ALLOW chạy trong createAuditedTool + PG16 RLS, đọc/ghi hai chiều với Advisory Memory (latticeAiMemory) và đẩy vết về Audit/OTel.'
+        : 'ALLOW tools run via createAuditedTool + PG16 RLS, exchange advisory-fenced context with latticeAiMemory, and emit Audit & OTel traces.',
+      route: 'createAuditedTool() <-> latticeAiMemory',
+      payload: '<dxos_memory_context advisory="true"> · SET LOCAL app.current_org',
+      chips: ['ALLOW Branch', 'Advisory Memory'],
     },
     {
       id: 'react-s4',
-      title: isVi ? 'Chặn HITL & ghi nhớ ngữ cảnh' : 'HITL Gate & Memory Recall',
-      activeNodes: ['unified_tools', 'hitl_exec', 'memory_vault'],
-      activeEdges: ['r7', 'r8'],
+      title: isVi ? 'Nhánh ASK -> HITL Queue -> approveAction' : 'ASK Mutations -> HITL Queue -> approveAction',
+      activeNodes: ['react_loop', 'hitl_exec', 'decide_approval', 'unified_tools', 'audit_ledger'],
+      activeEdges: ['r10', 'r11', 'r12', 'r13'],
       description: isVi
-        ? 'Thao tác ghi hoặc xử lý cảnh báo thuộc nhóm ASK tạm dừng tại hàng đợi HITL; kết quả được đối chiếu với bộ nhớ advisory chống chèn prompt.'
-        : 'ASK-tier record mutations and alarm actions pause in latticeAiApprovalQueue for operator confirmation while memory recall stays advisory-fenced.',
-      route: 'POST /api/dxosAi:decideApproval',
-      payload: '<dxos_memory_context advisory="true">',
-      chips: ['ASK Gate', 'Advisory Memory'],
+        ? 'Thao tác ASK tạm dừng trong latticeAiApprovalQueue; khi được approveAction chấp thuận, lệnh chạy qua createAuditedTool và ghi Audit/OTel.'
+        : 'ASK mutations pause in latticeAiApprovalQueue; upon approveAction confirmation, execution flows through createAuditedTool and emits Audit & OTel.',
+      route: 'POST /api/dxosAi:approveAction | :rejectAction',
+      payload: 'latticeAiApprovalQueue -> createAuditedTool()',
+      chips: ['ASK Branch', 'OTel Traces'],
     },
   ];
 
-  // Mode 2: App Builder 2.0 Lifecycle
+  // Mode 2: App Builder 2.0 Lifecycle (Independent Branches from Versioned App)
   const builderZones: DiagramZone[] = [
     {
       id: 'ab-provision',
-      label: isVi ? 'Lập kế hoạch, Dựng ứng dụng & Tự sửa lỗi (dxos-architect)' : 'Plan, Provision & Self-Heal (dxos-architect)',
+      label: isVi ? '1–2 · Lập kế hoạch, Dựng & Chốt Versioned App (dxos-architect)' : '1–2 · Plan, Build & Versioned App (dxos-architect)',
       x: 16,
       y: 16,
-      width: 848,
-      height: 128,
+      width: 1056,
+      height: 120,
       kind: 'admin',
     },
     {
       id: 'ab-lifecycle',
-      label: isVi ? 'Cập nhật phiên bản, Khôi phục, Tháo dỡ an toàn & Xuất Bundle' : 'Patch, Rollback, Safe Teardown & Bundle Export',
+      label: isVi ? '4 Nhánh Vận hành Độc lập từ Versioned App (Không nối chuỗi tuyến tính)' : '4 Independent Branches from Versioned App',
       x: 16,
-      y: 160,
-      width: 848,
-      height: 204,
+      y: 172,
+      width: 1056,
+      height: 196,
       kind: 'traffic',
     },
   ];
@@ -410,12 +522,12 @@ const modes = computed<DiagramMode[]>(() => {
   const builderNodes: DiagramNode[] = [
     {
       id: 'architect_prompt',
-      title: isVi ? 'dxos-architect' : 'dxos-architect',
-      sub: 'adminOnly · root|admin',
+      title: 'dxos-architect',
+      sub: 'root | admin only',
       icon: 'bot',
       x: 32,
-      y: 56,
-      width: 184,
+      y: 52,
+      width: 192,
       height: 64,
       zoneId: 'ab-provision',
       focal: true,
@@ -439,12 +551,12 @@ const modes = computed<DiagramMode[]>(() => {
     },
     {
       id: 'plan_app',
-      title: isVi ? '1. Plan (Dry-Run)' : '1. Plan (Dry-Run)',
+      title: isVi ? '1. Plan (ER Diff)' : '1. Plan (ER Diff)',
       sub: 'POST :planBuiltApp',
       icon: 'git-branch',
-      x: 244,
-      y: 56,
-      width: 184,
+      x: 308,
+      y: 52,
+      width: 192,
       height: 64,
       zoneId: 'ab-provision',
       focal: true,
@@ -455,7 +567,7 @@ const modes = computed<DiagramMode[]>(() => {
             protocol: 'HTTPS POST · Zero DB Writes',
             payloadOrSchema: 'buildErGraph (Kahn topo sort) + computeSpecDiff',
             responsibilities:
-              'Tạo bản nháp spec từ prompt, sắp xếp thứ tự phụ thuộc bảng bằng thuật toán Kahn và trả về bản xem trước thay đổi mà chưa chạm vào cơ sở dữ liệu.',
+              'Tạo bản nháp spec từ prompt, sắp xếp thứ tự phụ thuộc bảng bằng thuật toán Kahn và trả về bản xem trước ER Diff mà chưa chạm DB.',
           }
         : {
             role: 'Zero-write ER topological planner and spec diff',
@@ -463,28 +575,28 @@ const modes = computed<DiagramMode[]>(() => {
             protocol: 'HTTPS POST · Zero DB Writes',
             payloadOrSchema: 'buildErGraph (Kahn topo sort) + computeSpecDiff',
             responsibilities:
-              'Builds a draft spec from prompt input, resolves dependency order with Kahn topological sort, and computes structural diffs with zero database writes.',
+              'Builds a draft spec, resolves dependency order with Kahn topological sort, and computes ER diffs with zero database writes.',
           },
     },
     {
       id: 'build_app',
-      title: isVi ? '2. Build & Repair' : '2. Build & Repair',
+      title: isVi ? '2. Build & Self-Heal' : '2. Build & Self-Heal',
       sub: 'POST :buildBuiltApp',
       icon: 'layers',
-      x: 456,
-      y: 56,
-      width: 184,
+      x: 584,
+      y: 52,
+      width: 192,
       height: 64,
       zoneId: 'ab-provision',
       focal: true,
       inspector: isVi
         ? {
-            role: 'Khởi tạo toàn bộ bảng, RLS, vai trò, block, DMN và luồng',
+            role: 'Khởi tạo toàn bộ bảng, RLS, vai trò, block, DMN và tự sửa lỗi',
             packageOrPort: 'app-builder-orchestrator.js · dxosAi:buildBuiltApp',
             protocol: 'PG Transaction · Up to 2 Self-Heal Rounds',
             payloadOrSchema: 'latticeCustom* + FORCE RLS + 12 BlockModels + LatticeFlow/DMN',
             responsibilities:
-              'Chụp snapshot portal, tạo bảng tùy biến có FORCE RLS, gắn vai trò ldx_*, dựng 12 Native BlockModels, triển khai DMN/Flow và tự sửa lỗi tối đa 2 vòng.',
+              'Chụp snapshot portal, tạo bảng tùy biến có FORCE RLS, dựng 12 Native BlockModels, triển khai DMN/Flow và tự sửa lỗi tối đa 2 vòng.',
           }
         : {
             role: 'Full-stack provisioner with 2-round targeted self-repair',
@@ -492,55 +604,56 @@ const modes = computed<DiagramMode[]>(() => {
             protocol: 'PG Transaction · Up to 2 Self-Heal Rounds',
             payloadOrSchema: 'latticeCustom* + FORCE RLS + 12 BlockModels + LatticeFlow/DMN',
             responsibilities:
-              'Snapshots portals, creates FORCE RLS custom collections, provisions ldx_* RBAC, mounts Native v2 blocks, deploys DMN/Flow rules, and runs up to 2 self-heal cycles.',
+              'Snapshots portals, creates FORCE RLS custom collections, mounts Native v2 blocks, deploys DMN/Flow rules, and runs up to 2 self-heal cycles.',
           },
     },
     {
       id: 'verify_app',
-      title: isVi ? 'Kiểm chứng App' : 'Verify & Snapshot',
-      sub: 'latticeBuiltApps',
+      title: isVi ? 'Versioned App' : 'Versioned App',
+      sub: 'latticeBuiltApps + Snap',
       icon: 'check-circle',
-      x: 668,
-      y: 56,
-      width: 184,
+      x: 860,
+      y: 52,
+      width: 196,
       height: 64,
       zoneId: 'ab-provision',
+      focal: true,
       inspector: isVi
         ? {
-            role: 'Kiểm tra tính toàn vẹn cấu trúc và lưu phiên bản',
-            packageOrPort: 'PG16 · latticeBuiltApps / Versions',
+            role: 'Ứng dụng đã kiểm chứng kèm lịch sử phiên bản & snapshot',
+            packageOrPort: 'PG16 · latticeBuiltApps / Versions / UiSnapshots',
             protocol: 'verifyEnterpriseApp · RLS',
-            payloadOrSchema: 'verify_app | list_built_apps | latticeUiSnapshots',
+            payloadOrSchema: 'latticeBuiltApps + latticeBuiltAppVersions + latticeUiSnapshots',
             responsibilities:
-              'Xác nhận toàn bộ bảng, chính sách RLS, route portal và luồng hoạt động đồng bộ trước khi chốt bản ghi vào latticeBuiltAppVersions.',
+              'Là điểm gốc để thực hiện độc lập bất kỳ thao tác hậu kiểm nào: cập nhật Patch v2+, Rollback về snapshot, xuất Bundle v3 hoặc Safe Teardown.',
           }
         : {
-            role: 'Structural verification and version ledger commit',
-            packageOrPort: 'PG16 · latticeBuiltApps / Versions',
+            role: 'Verified application with version ledger & UI snapshots',
+            packageOrPort: 'PG16 · latticeBuiltApps / Versions / UiSnapshots',
             protocol: 'verifyEnterpriseApp · RLS',
-            payloadOrSchema: 'verify_app | list_built_apps | latticeUiSnapshots',
+            payloadOrSchema: 'latticeBuiltApps + latticeBuiltAppVersions + latticeUiSnapshots',
             responsibilities:
-              'Runs verifyEnterpriseApp across created collections, RLS policies, portal routes, and automations, persisting immutable version records.',
+              'Root state from which operators independently branch to Patch Spec (v2+), Rollback to Snapshot, Export Bundle v3, or Safe Teardown.',
           },
     },
     {
       id: 'patch_app',
-      title: isVi ? '3. Patch Spec' : '3. Patch Spec',
+      title: isVi ? 'Patch Spec (v2+)' : 'Patch Spec (v2+)',
       sub: 'POST :patchBuiltApp',
       icon: 'terminal',
       x: 32,
-      y: 212,
-      width: 184,
+      y: 236,
+      width: 192,
       height: 64,
       zoneId: 'ab-lifecycle',
       inspector: isVi
         ? {
-            role: 'Cập nhật tăng dần mà không phá vỡ dữ liệu hiện có',
+            role: 'Cập nhật tăng dần trực tiếp trên Versioned App',
             packageOrPort: 'app-builder-orchestrator.js · dxosAi:patchBuiltApp',
             protocol: 'HTTPS POST · Incremental Diff',
             payloadOrSchema: 'applySpecPatch + latticeBuiltAppVersions++',
             responsibilities:
-              'Áp dụng phần thay đổi cho collection, block hoặc quy tắc mới và tự động tạo phiên bản mới trong latticeBuiltAppVersions để sẵn sàng rollback.',
+              'Áp dụng phần thay đổi cho collection, block hoặc quy tắc mới và tự động tạo phiên bản mới trong latticeBuiltAppVersions.',
           }
         : {
             role: 'Incremental non-destructive specification patcher',
@@ -548,17 +661,17 @@ const modes = computed<DiagramMode[]>(() => {
             protocol: 'HTTPS POST · Incremental Diff',
             payloadOrSchema: 'applySpecPatch + latticeBuiltAppVersions++',
             responsibilities:
-              'Applies incremental field, block, and workflow updates while storing a pre-patch snapshot in latticeBuiltAppVersions.',
+              'Applies incremental field, block, and workflow updates directly to a Versioned App while recording a new version entry.',
           },
     },
     {
       id: 'rollback_app',
-      title: isVi ? '4. Rollback' : '4. Rollback',
-      sub: 'POST :rollbackBuiltApp',
+      title: isVi ? 'Rollback Snapshot' : 'Rollback to Snapshot',
+      sub: ':rollbackBuiltApp',
       icon: 'activity',
-      x: 244,
-      y: 212,
-      width: 184,
+      x: 308,
+      y: 236,
+      width: 192,
       height: 64,
       zoneId: 'ab-lifecycle',
       inspector: isVi
@@ -568,7 +681,7 @@ const modes = computed<DiagramMode[]>(() => {
             protocol: 'HTTPS POST · Time-Machine Restore',
             payloadOrSchema: '{ builtAppId, targetVersion } -> latticeUiSnapshots',
             responsibilities:
-              'Phục hồi toàn bộ bố cục portal, block FlowEngine, phân quyền vai trò và spec về đúng phiên bản mục tiêu đã lưu.',
+              'Phục hồi toàn bộ bố cục portal, block FlowEngine, phân quyền vai trò và spec về đúng phiên bản mục tiêu trong snapshot.',
           }
         : {
             role: 'Snapshot-backed version rollback engine',
@@ -580,13 +693,41 @@ const modes = computed<DiagramMode[]>(() => {
           },
     },
     {
+      id: 'bundle_export',
+      title: isVi ? 'Xuất Bundle v3' : 'Export Bundle v3',
+      sub: 'solution-bundle/v3',
+      icon: 'box',
+      x: 584,
+      y: 236,
+      width: 192,
+      height: 64,
+      zoneId: 'ab-lifecycle',
+      inspector: isVi
+        ? {
+            role: 'Đóng gói ứng dụng thành GitOps Solution Bundle v3',
+            packageOrPort: 'solution-bundle.js · dxosStudio:solutionBundleExport',
+            protocol: 'JSON · SHA-256 contentSha256',
+            payloadOrSchema: 'latticedx.solution-bundle/v3 (8 top-level keys)',
+            responsibilities:
+              'Xuất khẩu roles, portals, workflows, aiProfiles, customCollections, connectors, routesAndBlocks và governance với chữ ký SHA-256.',
+          }
+        : {
+            role: 'Exports provisioned apps as GitOps Solution Bundle v3',
+            packageOrPort: 'solution-bundle.js · dxosStudio:solutionBundleExport',
+            protocol: 'JSON · SHA-256 contentSha256',
+            payloadOrSchema: 'latticedx.solution-bundle/v3 (8 top-level keys)',
+            responsibilities:
+              'Serializes roles, portals, workflows, aiProfiles, customCollections, connectors, routesAndBlocks, and governance with SHA-256 digest.',
+          },
+    },
+    {
       id: 'teardown_app',
-      title: isVi ? '5. Safe Teardown' : '5. Safe Teardown',
-      sub: 'POST :teardownBuiltApp',
+      title: isVi ? 'Safe Teardown' : 'Safe Teardown',
+      sub: 'keepData=true',
       icon: 'shield',
-      x: 456,
-      y: 212,
-      width: 184,
+      x: 860,
+      y: 236,
+      width: 196,
       height: 64,
       zoneId: 'ab-lifecycle',
       focal: true,
@@ -597,7 +738,7 @@ const modes = computed<DiagramMode[]>(() => {
             protocol: 'System RLS Cross-Org Audit · keepData=true',
             payloadOrSchema: 'keepData: true (default) | BUILTIN_PROTECTED_ROLES guard',
             responsibilities:
-              'Mặc định giữ lại dữ liệu (keepData=true), quét toàn bộ latticeBuiltApps liên tổ chức trước để tuyệt đối không xóa bảng, vai trò hay portal đang dùng chung.',
+              'Nhánh độc lập từ Versioned App; mặc định keepData=true và quét liên tổ chức để không xóa bảng, vai trò hay portal đang dùng chung.',
           }
         : {
             role: 'Cross-org safe teardown protecting shared data and roles',
@@ -605,35 +746,7 @@ const modes = computed<DiagramMode[]>(() => {
             protocol: 'System RLS Cross-Org Audit · keepData=true',
             payloadOrSchema: 'keepData: true (default) | BUILTIN_PROTECTED_ROLES guard',
             responsibilities:
-              'Defaults keepData=true and inspects all tenant and cross-org latticeBuiltApps first so shared collections, built-in roles, and shared portals are never dropped.',
-          },
-    },
-    {
-      id: 'bundle_export',
-      title: isVi ? 'Xuất Bundle v3' : 'Bundle v3 Export',
-      sub: 'solution-bundle/v3',
-      icon: 'box',
-      x: 668,
-      y: 212,
-      width: 184,
-      height: 64,
-      zoneId: 'ab-lifecycle',
-      inspector: isVi
-        ? {
-            role: 'Đóng gói ứng dụng thành GitOps Solution Bundle v3',
-            packageOrPort: 'solution-bundle.js · dxosStudio:solutionBundleExport',
-            protocol: 'JSON · SHA-256 contentSha256',
-            payloadOrSchema: 'latticedx.solution-bundle/v3 (8 top-level keys)',
-            responsibilities:
-              'Xuất khẩu roles, portals, workflows, aiProfiles, customCollections, connectors, routesAndBlocks và governance với chữ ký toàn vẹn SHA-256.',
-          }
-        : {
-            role: 'Exports provisioned apps as GitOps Solution Bundle v3',
-            packageOrPort: 'solution-bundle.js · dxosStudio:solutionBundleExport',
-            protocol: 'JSON · SHA-256 contentSha256',
-            payloadOrSchema: 'latticedx.solution-bundle/v3 (8 top-level keys)',
-            responsibilities:
-              'Serializes roles, portals, workflows, aiProfiles, customCollections, connectors, routesAndBlocks, and governance with SHA-256 digest verification.',
+              'Independent branch from Versioned App; defaults keepData=true and checks cross-org usage so shared tables/roles are never dropped.',
           },
     },
   ];
@@ -646,26 +759,50 @@ const modes = computed<DiagramMode[]>(() => {
       id: 'b4',
       from: 'verify_app',
       to: 'patch_app',
-      label: 'v2+',
+      label: 'Patch v2+',
       kind: 'flow',
       points: [
-        [760, 120],
-        [760, 152],
-        [124, 152],
-        [124, 212],
+        [958, 116],
+        [958, 154],
+        [128, 154],
+        [128, 236],
       ],
     },
-    { id: 'b5', from: 'patch_app', to: 'rollback_app', label: 'Snapshot', kind: 'flow' },
-    { id: 'b6', from: 'rollback_app', to: 'teardown_app', label: 'Retire', kind: 'dashed' },
+    {
+      id: 'b5',
+      from: 'verify_app',
+      to: 'rollback_app',
+      label: 'Rollback',
+      kind: 'flow',
+      points: [
+        [958, 116],
+        [958, 154],
+        [404, 154],
+        [404, 236],
+      ],
+    },
+    {
+      id: 'b6',
+      from: 'verify_app',
+      to: 'bundle_export',
+      label: 'Export v3',
+      kind: 'primary',
+      points: [
+        [958, 116],
+        [958, 154],
+        [680, 154],
+        [680, 236],
+      ],
+    },
     {
       id: 'b7',
       from: 'verify_app',
-      to: 'bundle_export',
-      label: 'GitOps',
-      kind: 'flow',
+      to: 'teardown_app',
+      label: 'Teardown',
+      kind: 'dashed',
       points: [
-        [788, 120],
-        [788, 212],
+        [958, 116],
+        [958, 236],
       ],
     },
   ];
@@ -673,51 +810,51 @@ const modes = computed<DiagramMode[]>(() => {
   const builderSteps: DiagramStep[] = [
     {
       id: 'ab-s1',
-      title: isVi ? 'Lập kế hoạch không ghi DB' : 'Dry-Run Plan (ER Graph)',
+      title: isVi ? '1. Plan không ghi DB (ER Diff)' : '1. Plan (Dry-Run ER Diff)',
       activeNodes: ['architect_prompt', 'plan_app'],
       activeEdges: ['b1'],
       description: isVi
         ? 'dxos-architect gọi planBuiltApp để dựng đồ thị ER theo thuật toán Kahn và tính toán spec diff mà chưa tạo bảng thực tế.'
-        : 'dxos-architect invokes planBuiltApp to generate a Kahn-sorted ER graph and structural diff with zero database mutations.',
+        : 'dxos-architect invokes planBuiltApp to generate a Kahn-sorted ER graph and structural ER diff with zero database mutations.',
       route: 'POST /api/dxosAi:planBuiltApp',
       payload: 'buildErGraph() + computeSpecDiff()',
       chips: ['Dry-Run', 'Kahn Sort'],
     },
     {
       id: 'ab-s2',
-      title: isVi ? 'Khởi tạo & tự sửa lỗi' : 'Provision & Self-Heal',
+      title: isVi ? '2. Build, Self-Heal & Versioned App' : '2. Build, Self-Heal & Versioned App',
       activeNodes: ['plan_app', 'build_app', 'verify_app'],
       activeEdges: ['b2', 'b3'],
       description: isVi
-        ? 'buildBuiltApp tạo bảng FORCE RLS, 12 BlockModels, quy tắc DMN/Flow, sau đó chạy verifyEnterpriseApp và tối đa 2 vòng applyTargetedRepair.'
-        : 'buildBuiltApp creates FORCE RLS tables, 12 BlockModels, and DMN/Flow rules, then runs verifyEnterpriseApp with up to 2 applyTargetedRepair rounds.',
+        ? 'buildBuiltApp tạo bảng FORCE RLS, 12 BlockModels, DMN/Flow, chạy tối đa 2 vòng tự sửa và lưu bản ghi Versioned App kèm snapshot.'
+        : 'buildBuiltApp creates FORCE RLS tables, 12 BlockModels, and DMN/Flow rules, runs up to 2 self-heal rounds, and commits Versioned App + Snapshots.',
       route: 'POST /api/dxosAi:buildBuiltApp',
-      payload: 'DEFAULT_SELF_HEAL_MAX_ROUNDS = 2',
-      chips: ['FORCE RLS', 'Self-Heal'],
+      payload: 'DEFAULT_SELF_HEAL_MAX_ROUNDS = 2 -> latticeBuiltApps',
+      chips: ['FORCE RLS', 'Versioned App'],
     },
     {
       id: 'ab-s3',
-      title: isVi ? 'Cập nhật & khôi phục phiên bản' : 'Patch & Version Rollback',
+      title: isVi ? 'Nhánh Patch (v2+) & Rollback độc lập' : 'Independent Patch (v2+) & Rollback Branches',
       activeNodes: ['verify_app', 'patch_app', 'rollback_app'],
       activeEdges: ['b4', 'b5'],
       description: isVi
-        ? 'patchBuiltApp lưu vết thay đổi vào latticeBuiltAppVersions; rollbackBuiltApp khôi phục layout UI, block và vai trò về targetVersion.'
-        : 'patchBuiltApp records versioned updates in latticeBuiltAppVersions; rollbackBuiltApp restores snapshots, blocks, and roles to targetVersion.',
-      route: 'POST /api/dxosAi:rollbackBuiltApp',
-      payload: 'latticeUiSnapshots -> targetVersion',
-      chips: ['Versioned', 'Time-Machine'],
+        ? 'Từ Versioned App, quản trị viên có thể rẽ nhánh Patch Spec (v2+) để nâng cấp tăng dần hoặc Rollback trực tiếp về snapshot đã lưu.'
+        : 'From Versioned App, operators independently branch to Patch Spec (v2+) for incremental updates or Rollback directly to any saved snapshot.',
+      route: 'POST /api/dxosAi:patchBuiltApp | :rollbackBuiltApp',
+      payload: 'latticeBuiltAppVersions | latticeUiSnapshots',
+      chips: ['Direct Branching', 'Time-Machine'],
     },
     {
       id: 'ab-s4',
-      title: isVi ? 'Tháo dỡ an toàn & xuất Bundle v3' : 'Safe Teardown & Bundle v3',
-      activeNodes: ['rollback_app', 'teardown_app', 'bundle_export', 'verify_app'],
+      title: isVi ? 'Nhánh Export Bundle v3 & Safe Teardown' : 'Independent Export Bundle v3 & Safe Teardown',
+      activeNodes: ['verify_app', 'bundle_export', 'teardown_app'],
       activeEdges: ['b6', 'b7'],
       description: isVi
-        ? 'teardownBuiltApp mặc định keepData=true và kiểm tra bảng dùng chung liên tổ chức; export_app_bundle xuất chuẩn Solution Bundle v3.'
-        : 'teardownBuiltApp defaults keepData=true after cross-org shared-artifact checks; export_app_bundle emits Solution Bundle v3.',
-      route: 'POST /api/dxosAi:teardownBuiltApp',
+        ? 'Từ Versioned App có thể xuất trực tiếp Solution Bundle v3 chuẩn GitOps hoặc chạy Safe Teardown (keepData=true) độc lập.'
+        : 'From Versioned App, operators can independently Export Bundle v3 for GitOps promotion or invoke Safe Teardown (keepData=true).',
+      route: 'POST /api/dxosAi:exportBuiltAppBundle | :teardownBuiltApp',
       payload: 'keepData: true | latticedx.solution-bundle/v3',
-      chips: ['Safe Teardown', 'Bundle v3'],
+      chips: ['Bundle v3', 'Safe Teardown'],
     },
   ];
 
@@ -728,17 +865,17 @@ const modes = computed<DiagramMode[]>(() => {
       label: isVi ? 'Client Ngoài (Bearer)' : 'External Clients (Bearer)',
       x: 16,
       y: 16,
-      width: 224,
-      height: 344,
+      width: 216,
+      height: 368,
       kind: 'external',
     },
     {
       id: 'dxos-gateways',
       label: isVi ? 'Cổng MCP Gateway, A2A & Kiểm soát Quản trị' : 'MCP Gateway, A2A & Governance Plane',
-      x: 256,
+      x: 300,
       y: 16,
-      width: 608,
-      height: 344,
+      width: 772,
+      height: 368,
       kind: 'admin',
     },
   ];
@@ -746,12 +883,12 @@ const modes = computed<DiagramMode[]>(() => {
   const protoNodes: DiagramNode[] = [
     {
       id: 'mcp_client',
-      title: isVi ? 'MCP Client' : 'MCP Client',
+      title: 'MCP Client',
       sub: 'JSON-RPC 2.0 · Bearer',
       icon: 'terminal',
       x: 32,
       y: 64,
-      width: 192,
+      width: 184,
       height: 64,
       zoneId: 'ext-clients',
       inspector: isVi
@@ -774,12 +911,12 @@ const modes = computed<DiagramMode[]>(() => {
     },
     {
       id: 'a2a_peer',
-      title: isVi ? 'A2A Peer Agent' : 'A2A Peer Agent',
+      title: 'A2A Peer Agent',
       sub: 'Agent Card · Bearer',
       icon: 'globe',
       x: 32,
       y: 220,
-      width: 192,
+      width: 184,
       height: 64,
       zoneId: 'ext-clients',
       inspector: isVi
@@ -802,12 +939,12 @@ const modes = computed<DiagramMode[]>(() => {
     },
     {
       id: 'mcp_gateway',
-      title: isVi ? 'MCP Gateway' : 'MCP Gateway',
+      title: 'MCP Gateway',
       sub: 'POST /api/dxos-mcp',
       icon: 'plug',
-      x: 276,
+      x: 320,
       y: 64,
-      width: 176,
+      width: 184,
       height: 64,
       zoneId: 'dxos-gateways',
       focal: true,
@@ -831,12 +968,12 @@ const modes = computed<DiagramMode[]>(() => {
     },
     {
       id: 'itot_mcp',
-      title: isVi ? '4 IT/OT MCP' : '4 IT/OT MCP',
+      title: '4 IT/OT MCP',
       sub: '/api/dxos-mcp/it-ot',
       icon: 'radio',
-      x: 476,
+      x: 596,
       y: 64,
-      width: 176,
+      width: 184,
       height: 64,
       zoneId: 'dxos-gateways',
       inspector: isVi
@@ -862,9 +999,9 @@ const modes = computed<DiagramMode[]>(() => {
       title: isVi ? 'Kho 20+4 Tool' : '20+4 Tool Pool',
       sub: 'createAuditedTool',
       icon: 'box',
-      x: 676,
+      x: 872,
       y: 64,
-      width: 176,
+      width: 184,
       height: 64,
       zoneId: 'dxos-gateways',
       inspector: isVi
@@ -887,12 +1024,12 @@ const modes = computed<DiagramMode[]>(() => {
     },
     {
       id: 'a2a_gateway',
-      title: isVi ? 'A2A Gateway' : 'A2A Gateway',
-      sub: '/.well-known/agent-card.json',
+      title: 'A2A Gateway',
+      sub: 'POST /api/dxos-a2a',
       icon: 'server',
-      x: 276,
+      x: 320,
       y: 220,
-      width: 176,
+      width: 184,
       height: 64,
       zoneId: 'dxos-gateways',
       focal: true,
@@ -917,11 +1054,11 @@ const modes = computed<DiagramMode[]>(() => {
     {
       id: 'a2a_tasks',
       title: isVi ? 'Trạng thái A2A' : 'A2A Task Store',
-      sub: 'latticeA2aTasks · RLS',
+      sub: 'latticeA2aTasks',
       icon: 'database',
-      x: 476,
+      x: 596,
       y: 220,
-      width: 176,
+      width: 184,
       height: 64,
       zoneId: 'dxos-gateways',
       inspector: isVi
@@ -944,12 +1081,12 @@ const modes = computed<DiagramMode[]>(() => {
     },
     {
       id: 'gov_eval',
-      title: isVi ? 'Eval & Guardrails' : 'Eval & Guardrails',
-      sub: 'WAVE1_3 · RED_TEAM · VN_NL',
+      title: 'Eval & Guardrails',
+      sub: 'Eval Lab · 3 Suites',
       icon: 'shield',
-      x: 676,
+      x: 872,
       y: 220,
-      width: 176,
+      width: 184,
       height: 64,
       zoneId: 'dxos-gateways',
       inspector: isVi
@@ -983,10 +1120,10 @@ const modes = computed<DiagramMode[]>(() => {
       label: '20 Tools',
       kind: 'primary',
       points: [
-        [364, 128],
-        [364, 160],
-        [764, 160],
-        [764, 128],
+        [412, 128],
+        [412, 160],
+        [964, 160],
+        [964, 128],
       ],
     },
     { id: 'p5', from: 'a2a_peer', to: 'a2a_gateway', label: 'Agent Card', kind: 'primary' },
@@ -999,8 +1136,8 @@ const modes = computed<DiagramMode[]>(() => {
       label: 'PII / Quota',
       kind: 'dashed',
       points: [
-        [764, 128],
-        [764, 220],
+        [964, 128],
+        [964, 220],
       ],
     },
   ];
@@ -1060,7 +1197,7 @@ const modes = computed<DiagramMode[]>(() => {
     {
       id: 'react-tools',
       label: isVi ? 'ReAct & 20 Tools' : 'ReAct & 20 Tools',
-      summary: isVi ? '7 Hồ sơ · 20+4 Tool · PII/Quota' : '7 Profiles · 20+4 Tools · PII/Quota',
+      summary: isVi ? 'ALLOW <-> Memory & ASK -> HITL -> Audit' : 'ALLOW <-> Memory & ASK -> HITL -> Audit',
       zones: reactZones,
       nodes: reactNodes,
       edges: reactEdges,
@@ -1068,8 +1205,8 @@ const modes = computed<DiagramMode[]>(() => {
     },
     {
       id: 'app-builder',
-      label: isVi ? 'App Builder 2.0' : 'App Builder 2.0',
-      summary: 'plan -> build -> patch -> rollback -> teardown',
+      label: 'App Builder 2.0',
+      summary: isVi ? 'Plan -> Build -> 4 Nhánh Độc lập' : 'Plan -> Build -> 4 Independent Branches',
       zones: builderZones,
       nodes: builderNodes,
       edges: builderEdges,
@@ -1077,7 +1214,7 @@ const modes = computed<DiagramMode[]>(() => {
     },
     {
       id: 'mcp-a2a',
-      label: isVi ? 'MCP & A2A' : 'MCP & A2A',
+      label: 'MCP & A2A',
       summary: '/api/dxos-mcp · /.well-known/agent-card.json',
       zones: protoZones,
       nodes: protoNodes,
@@ -1092,7 +1229,7 @@ const modes = computed<DiagramMode[]>(() => {
   <DiagramCanvas
     :title="meta.title"
     :caption="meta.caption"
-    viewBox="0 0 880 380"
+    viewBox="0 0 1088 400"
     :modes="modes"
     :lang="resolvedLang"
   />

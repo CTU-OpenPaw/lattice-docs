@@ -1,38 +1,48 @@
 ---
-title: Tổng quan Kiến trúc 6-Plane DX-OS
-description: Mô hình 6 phân hệ điều phối, 5 vùng mạng Docker cô lập, cấu trúc Compose và hệ sinh thái 4 kho mã nguồn Apache-2.0 của LatticeDX v0.4.2.
+title: Tổng quan Kiến trúc Nền tảng (v0.4.2)
+description: Kiến trúc 4 tầng, 5 mẫu tương tác nền tảng, 5 vùng mạng Docker cô lập, cấu trúc Compose và hệ sinh thái 4 kho mã nguồn Apache-2.0 của LatticeDX v0.4.2.
 ---
 
-# Tổng quan Kiến trúc 6-Plane DX-OS
+# Tổng quan Kiến trúc Nền tảng (v0.4.2)
 
-LatticeDX `v0.4.2` tổ chức toàn bộ nền tảng số doanh nghiệp theo mô hình **6 phân hệ điều phối (6-Plane DX-OS)** kết hợp **5 vùng mạng container cô lập**. Kiến trúc này tách biệt lớp biên xác thực HTTP/TLS, tầng ứng dụng và quy trình nghiệp vụ, tầng tự động hóa IT/OT, lực lượng tác nhân AI và lõi lưu trữ PostgreSQL `16` áp dụng `FORCE ROW LEVEL SECURITY`.
+LatticeDX `v0.4.2` tổ chức toàn bộ nền tảng số doanh nghiệp theo **kiến trúc 4 tầng** (**Tầng 3 Ứng dụng Nghiệp vụ** -> **Tầng 2 Trải nghiệm & Cấu hình** -> **Tầng 1 Runtime Headless & Dịch vụ Dùng chung** -> **Dữ liệu thuộc Dịch vụ**) kết hợp **5 mẫu tương tác chuẩn hóa** và **5 vùng mạng container cô lập**. Kiến trúc này tách biệt ứng dụng nghiệp vụ cắm-nóng, không gian đa cổng, runtime NocoBase `2.2.50` + `7` plugin Apache-2.0, tự động hóa IT/OT, lực lượng tác nhân AI và lõi lưu trữ PostgreSQL `16` áp dụng `FORCE ROW LEVEL SECURITY`.
+
+<figure class="ldx-arch-figure">
+
+![Kiến trúc Nền tảng LatticeDX v0.4.2 — 4 tầng, 5 mẫu tương tác và vận hành xuyên suốt](/images/architecture-v042-vi.webp)
+
+<figcaption><strong>Sơ đồ Kiến trúc Nền tảng LatticeDX <code>v0.4.2</code>:</strong> tổng quan 4 tầng (Tầng 3 Ứng dụng Nghiệp vụ, Tầng 2 Trải nghiệm Người dùng &amp; Cấu hình, Tầng 1 Runtime Headless &amp; 5 lớp dịch vụ dùng chung, Dữ liệu thuộc Dịch vụ), 5 Mẫu Tương tác đầu cuối và các năng lực Vận hành Xuyên suốt.</figcaption>
+</figure>
 
 <PlatformPlanesDiagram />
 
-## 6 Phân hệ Điều phối (Planes 1–6)
+## Kiến trúc 4 Tầng & Các Khối Dịch vụ
 
-Mỗi phân hệ đảm nhận một ranh giới trách nhiệm rõ ràng và giao tiếp với các phân hệ lân cận qua hợp đồng API, hàng đợi outbox hoặc bus sự kiện chuẩn hóa.
+Mỗi tầng đảm nhận một ranh giới trách nhiệm rõ ràng; mọi thao tác ghi dữ liệu nghiệp vụ đều đi qua cổng kiểm soát hợp đồng và chính sách `FORCE RLS` ở Tầng 1, không truy cập tắt trực tiếp xuống bảng nội bộ.
 
-| Phân hệ | Vai trò điều phối | Thành phần & Dịch vụ cốt lõi | Giao diện & Tuyến API chính |
+| Tầng / Lớp | Phạm vi kiến trúc | Thành phần & Dịch vụ cốt lõi | Giao diện & Tuyến API chính |
 | :--- | :--- | :--- | :--- |
-| **Plane 1** | Danh tính, Biên Zero-Trust & Lưu trữ Đa Tenant | Caddy `2.10`, Apache APISIX `3.19.0`, Keycloak `26.8.2` (OIDC/PKCE S256), Valkey `8.1`, `@latticedx/plugin-enterprise-auth`, PaaS API Keys (`ldx_pat_*`), Sổ cái Ed25519/Merkle (`dxosLedger`), `file-scanner` + ClamAV `1.5.5` + RustFS `1.0.6`, Vault AES-256-GCM (`dxosVault`), 56 bảng tĩnh `FORCE RLS` với role `nocobase_app` | `/enterprise-login`, `/api/dxosApiKeys:*`, `/api/dxosLedger:*`, `/api/dxosVault:*`, `/api/dxosDataGov:*` |
-| **Plane 2** | Digital Twin IT/OT & Chuỗi thời gian | Eclipse Mosquitto `2.0.21` Dynamic Security (`allow_anonymous false`, `$CONTROL/dynamic-security/v1`, LWT `device.offline`), Node-RED `4.0.9` downlink, FIWARE Orion-LD `1.12.0` + MongoDB `8.0`, bảng `latticeTelemetryPoints`, `latticeTwinShadows`, tính toán Arrhenius MKT, ngưỡng HITL `2.0°C` | `/api/dxosBroker:*`, `/api/dxosBroker:orionNotify`, `/api/dxosBlocks:twin*`, `/api/dxosBlocks:telemetry*`, `/api/dxosBlocks:alarm*` |
-| **Plane 3** | Event Bus, LatticeFlow v2, Phê duyệt & Stock `n8n` | `dxosEvents` (CloudEvents `1.0`, Standard Webhooks `whsec_`, PG Outbox `FOR UPDATE SKIP LOCKED`, circuit breaker `5` lỗi/`120s`, DLQ), LatticeFlow v2 DAG (`dxosAutomations`: 24 node / 6 nhóm, `loopCursor`, HITL pause/resume), `dxosApprovals` (`M-of-N` + `dxosDelegations`), `dxosNotify`, Visual DMN (`dxosDmn`), OMS/WMS/FEFO/ePOD (`dxosWms`), cầu nối tùy chọn Stock `n8n` `2.48.1` (`dxosN8n`) | `/admin/settings/workflow/automation`, `/api/dxosEvents:*`, `/api/dxosAutomations:*`, `/api/dxosApprovals:*`, `/api/dxosDmn:*`, `/api/dxosWms:*`, `/v/track/:code`, `/api/dxosN8n:*` |
-| **Plane 4** | Đa Cổng, Field PWA, Biểu mẫu & GitOps v3 | Cổng vai trò `/p/*` (`procurement`, `incidents`, `logistics`, `services`, `cmms`, `partner-claims`), Mobile Field PWA (`/v/mobile` dùng IndexedDB outbox và hàng đợi `quarantined`), Public Forms (`/v/form/:slug` không rò rỉ PII), 12 Native v2 `BlockModel`s (`maplibre-gl`, WebGIS, BI Chart, WMS Ops, Creative Studio), `dxosBuilder` cho `latticeCustom*`, P.A.R.A. + OCR + Hybrid RAG (`pgvector` `0.8.1` HNSW + RRF), Solution Bundle `v3` | `/p/<slug>`, `/v/mobile`, `/v/form/:slug`, `/admin/settings/dxos-studio`, `/admin/settings/dxos-para`, `/api/dxosBlocks:*`, `/api/latticePara:*`, `/api/dxosBuilder:*` |
-| **Plane 5** | AI Workforce, App Builder 2.0, MCP & A2A | 7 Starter AI Profiles (`dxos-coordinator` đến `dxos-analyst`), 20 Unified Tools + 4 IT/OT MCP Tools, App Builder 2.0 (`plan`, `build`, `patch`, `rollback`, `teardown` an toàn), Streamable HTTP MCP (`/api/dxos-mcp`, `/api/dxos-mcp/it-ot`), Google/LF A2A (`/.well-known/agent-card.json`, `/api/dxos-a2a`), Eval Lab, che PII (CCCD, MST, STK, SĐT), hạn mức token/chi phí trên PostgreSQL | `/admin/settings/dxos-ai`, `/.well-known/agent-card.json`, `/api/dxos-a2a`, `/api/dxos-mcp`, `/api/dxos-mcp/it-ot`, `/api/dxosAi:*` |
-| **Plane 6** | Tầng Runtime Ứng dụng, Truy vết OTel & PITR | Container runtime ngoài `nocobase/nocobase:2.2.50` nạp 7 plugin Apache-2.0 (`sdkProvidedByHost: true`), Fastify `5` (`/v1/*`), đặc tả sống OpenAPI `3.1.0` & AsyncAPI `3.0.0`, OTel Collector Contrib `0.123.0` (W3C `traceparent` + OTel GenAI), Prometheus `v3.3.0`, Grafana OSS `11.5.8`, Gotenberg `8.20.1` (`pdf`), sao lưu PostgreSQL PITR WAL `.gz` | `/api/dxos:health`, `/api/dxos:metrics`, `/api/dxos:openapi`, `/api/dxos:asyncapi`, `/v1/*` |
+| **Tầng 3 · Ứng dụng Nghiệp vụ Dạng Plug-in** | Giải pháp nghiệp vụ & ứng dụng AI | **Logistics Chuỗi lạnh & WMS** (`dxosWms`: đơn hàng, lô FEFO, Arrhenius MKT & ePOD), **Sự cố IIoT & Bản sao số** (telemetry, WebGIS & điều khiển 2 chiều), **CMMS & Khiếu nại Đối tác** (bảo trì, SLA), **Mua sắm, ITSM & Ứng dụng AI** (`latticeCustom*`) | `/p/logistics`, `/p/incidents`, `/p/cmms`, `/p/partner-claims`, `/p/procurement`, `/p/services`, `/v/track/:code` |
+| **Tầng 2 · Trải nghiệm Người dùng & Cấu hình** | Các góc nhìn dùng chung một giao diện | **Không gian Theo vai trò** (`/p/*`, Mobile Field PWA `/v/mobile` dùng IndexedDB outbox + `quarantined`, Public `/v/form/:slug` không rò rỉ PII), **NocoBase & Studio Điều khiển**, **Góc nhìn Dữ liệu, BI & WebGIS** (`12` Native v2 `BlockModel`s gồm `maplibre-gl`, BI, WMS Ops), **AI Studio & Duyệt HITL** | `/p/<slug>`, `/v/mobile`, `/v/form/:slug`, `/admin/settings/dxos-studio`, `/admin/settings/dxos-ai` |
+| **Tầng 1 · Truy cập & Định danh** | Quản lý truy cập & biên Zero-Trust | **Keycloak `26.8.2`** (OIDC + PKCE `S256`), **Cổng Caddy `2.10` & Apache APISIX `3.19.0`** (TLS `1.3`, HSTS, gỡ header `Server`, `X-Request-Id`, giới hạn tốc độ bằng Valkey), `@latticedx/plugin-enterprise-auth` | `/enterprise-login`, `/api/enterpriseAuth:*` |
+| **Tầng 1 · Môi trường Chạy Ứng dụng** | Backend ứng dụng & logic nghiệp vụ | **Host `nocobase/nocobase:2.2.50`** nạp ngoài `7` plugin Apache-2.0 (`sdkProvidedByHost: true`, mount `:ro`), **Dịch vụ Nghiệp vụ Fastify `5`** (`/v1/*` & logic chuyên biệt) | `/api/dxos:health`, `/api/dxos:openapi`, `/api/dxos:asyncapi`, `/v1/*` |
+| **Tầng 1 · Lõi Nền tảng Tự chủ** | Dịch vụ lõi do đội ngũ làm chủ | **App Registry & Bundle v3** (`dxosBuilder` cho `latticeCustom*`), **Adapters & Hợp đồng API** (OpenAPI `3.1.0`, AsyncAPI `3.0.0`, Vault AES-256-GCM `dxosVault`), **Chính sách Dùng chung** (`56` bảng tĩnh `FORCE RLS` với role `nocobase_app` + `ldx_pat_*`), **Outbox & Điều phối Sự kiện** (`dxosEvents`: CloudEvents `1.0`, Standard Webhooks `whsec_`, `FOR UPDATE SKIP LOCKED`, circuit breaker `5` lỗi/`120s`, DLQ) | `/api/dxosApiKeys:*`, `/api/dxosVault:*`, `/api/dxosEvents:*`, `/api/dxosBuilder:*`, `/api/dxosDataGov:*` |
+| **Tầng 1 · Tự động hóa & Ngữ cảnh** | Luồng việc, tích hợp & ngữ cảnh IIoT | **LatticeFlow v2 & Phê duyệt** (`dxosAutomations`: `24` node / `6` nhóm, `loopCursor`, `dxosApprovals` `M-of-N` + `dxosDelegations`, `dxosNotify`), **Luật DMN Trực quan** (`dxosDmn` FEEL), **Stock `n8n` `2.48.1`** (tích hợp ngoài qua REST v1 & OAuth2 PKCE), **Broker NGSI-LD & MQTT** (FIWARE Orion-LD `1.12.0`, Eclipse Mosquitto `2.0.21` DynSec, Node-RED `4.0.9`, ngưỡng HITL `2.0°C`) | `/admin/settings/workflow/automation`, `/api/dxosAutomations:*`, `/api/dxosApprovals:*`, `/api/dxosDmn:*`, `/api/dxosN8n:*`, `/api/dxosBroker:*` |
+| **Tầng 1 · Dịch vụ Agent AI** | Lực lượng tác nhân & dựng ứng dụng | **Business Agents & P.A.R.A. RAG** (`7` Profiles `dxos-coordinator`..`dxos-analyst`, `20` Unified Tools + `4` IT/OT MCP Tools, `/api/dxos-mcp`, `/api/dxos-a2a`, `/.well-known/agent-card.json`, che PII, hạn mức PostgreSQL, Hybrid RAG HNSW + RRF), **Application Builder 2.0** (Plan-Diff Schema/ER cô lập, Xem trước & Rollback an toàn) | `/api/dxos-mcp`, `/api/dxos-mcp/it-ot`, `/api/dxos-a2a`, `/api/dxosAi:*`, `/api/latticePara:*` |
+| **Dữ liệu thuộc Dịch vụ** | Dịch vụ làm chủ lưu trữ & sổ cái | **PostgreSQL `16` + `pgvector` `0.8.1`** (`56` bảng `FORCE RLS` & vector HNSW), **Lưu trữ Đối tượng RustFS `1.0.6`**, **Orion-LD + MongoDB `8.0` & Valkey `8.1`**, **Sổ cái Ed25519 + Merkle** (`dxosLedger`) | `/api/dxosLedger:*`, `/api/dxosBlocks:*` |
+| **Vận hành Xuyên suốt** | Kiểm toán, bảo mật, quét tệp & DR | **OTel Collector `0.123.0` + Prometheus `v3.3.0` + Grafana `11.5.8`** (W3C `traceparent` + OTel GenAI), **Vault & RBAC**, **Cách ly & Quét Tệp** (`file-scanner` + ClamAV `1.5.5`), **Gotenberg `8.20.1`** (`pdf`), **Sao lưu PITR WAL `.gz`**, **Bundle v3 & CycloneDX SBOM** | `/api/dxos:metrics` |
 
-## 5 Luồng Tương tác Xuyên Phân hệ
+## 5 Mẫu Tương tác Nền tảng (Patterns 1–5)
 
-Mọi nghiệp vụ thực tế đều đi qua một chuỗi ranh giới nhất quán giữa các phân hệ, không cho phép truy cập tắt trực tiếp vào tầng dữ liệu nội bộ:
+Mọi nghiệp vụ thực tế đi qua một trong 5 mẫu tương tác chuẩn hóa sau, bảo đảm mọi thay đổi trạng thái đều qua ranh giới kiểm soát quyền và nhật ký giao dịch:
 
-| Luồng | Chuỗi xử lý xuyên phân hệ |
+| Mẫu | Chuỗi thực thi đầu cuối |
 | :---: | :--- |
-| `1` | **Biên Zero-Trust & Phiên OIDC:** người dùng đi qua Caddy `2.10` (chấm dứt TLS, thêm `Strict-Transport-Security`, gỡ header `Server`) tới Apache APISIX `3.19.0` (gắn `X-Request-Id`, giới hạn tốc độ bằng Valkey) và xác thực qua Keycloak `26.8.2` (`PKCE S256`) hoặc khóa `ldx_pat_*` trước khi `latticeNativeScope` mở giao dịch PostgreSQL với `app.current_org`. |
-| `2` | **Cổng Công khai & Field PWA Ngoại tuyến:** tuyến `/v/form/*`, `/v/track/*` và `/v/mobile` được phục vụ qua cấu hình Nginx `10-lattice-public-routes.sh` với CSP sinh nonce riêng cho từng phản hồi (`default-src 'none'; script-src 'nonce-<n>'`). Thiết bị hiện trường xếp hàng thao tác vào IndexedDB `latticedx-mobile-outbox` và cô lập xung đột HTTP `4xx` sang trạng thái `quarantined`. |
-| `3` | **Digital Twin IIoT 2 chiều:** cảm biến gửi bản tin qua Eclipse Mosquitto `2.0.21` (DynSec/LWT), Node-RED `4.0.9` chuẩn hóa về `dxosBlocks:telemetryIngest`, ghi vào `latticeTelemetryPoints` và đẩy vào outbox `latticeContextOutbox` để đồng bộ sang FIWARE Orion-LD `1.12.0`. Lệnh điều khiển từ WebGIS hoặc AI agent đi qua ngưỡng HITL `2.0°C` trước khi xuống Node-RED. |
-| `4` | **Bus Sự kiện & Hàng đợi Bền vững:** thay đổi dữ liệu hoặc sự cố tạo sự kiện CloudEvents `1.0` trong `latticeEventBus`, được trình quét nền `10s` ký Standard Webhooks (`webhook-id`, `webhook-timestamp`, `webhook-signature: v1,<b64>`) gửi tới webhook ngoài hoặc Stock `n8n` `2.48.1`, kèm circuit breaker mở `120s` sau `5` lần lỗi liên tiếp. |
-| `5` | **Tác nhân AI, MCP & Quan sát OTel:** yêu cầu từ Studio AI hoặc client ngoài qua `/api/dxos-mcp` và `/api/dxos-a2a` chạy qua `createAuditedTool` để kiểm tra quyền RBAC, che PII tiếng Việt, ghi nhận hạn mức trên PostgreSQL và phát span OTel GenAI (`gen_ai.system`, `gen_ai.request.model`) về `otel-collector:4318`. |
+| `1` | **Yêu cầu ứng dụng (Application request):** `Người dùng / Không gian vai trò` -> `Cổng Caddy 2.10 + APISIX 3.19.0` (chấm dứt TLS, `X-Request-Id`, `limit-count` Valkey) -> `NocoBase / API Nghiệp vụ` (xác thực `Keycloak` OIDC PKCE `S256` hoặc `ldx_pat_*`) -> `PostgreSQL 16 FORCE RLS` (`latticeNativeScope` gắn `app.current_org` dưới role `nocobase_app`). |
+| `2` | **Tích hợp ngoài (External integration):** `Hệ thống ngoài` -> `Webhook Bảo vệ (HMAC Standard Webhooks whsec_)` -> `Event Bus (latticeEventBus, FOR UPDATE SKIP LOCKED, circuit breaker 5 lỗi/120s) / Adapter n8n 2.48.1` -> `API Dịch vụ Cấp quyền (ldx_pat_*)`. |
+| `3` | **Tự động theo ngữ cảnh (Context-driven automation):** `Mosquitto 2.0.21 (DynSec/LWT) -> Node-RED 4.0.9` -> `NocoBase MKT & Outbox` -> `Broker NGSI-LD (FIWARE Orion-LD 1.12.0)` --*(Thông báo thay đổi / nét đứt)*--> `Luật DMN & MKT` -> `LatticeFlow v2 / Tác vụ` (kèm ngưỡng HITL `2.0°C` khi điều khiển 2 chiều xuống Node-RED). |
+| `4` | **Agent nghiệp vụ (Business agent):** `Người dùng / Luồng / MCP / A2A` -> `Business Agent + P.A.R.A. Hybrid RAG (pgvector HNSW + RRF)` -> `20 Công cụ Cấp quyền (createAuditedTool: che PII tiếng Việt, hạn mức PostgreSQL, OTel GenAI)` -> `API Dịch vụ Cấp quyền (HITL cho thao tác ghi nhạy cảm)`. |
+| `5` | **Dựng ứng dụng (Application builder):** `Builder · App Builder 2.0` -> `Plan & ER Diff Cô lập` (dry-run schema `latticeCustom*`) -> `Kiểm tra & Xem trước` -> `Người duyệt (Human Approval)` -> `Xuất bản Bundle v3 / Rollback An toàn` (không bao giờ ghi thẳng DB production). |
 
 ## 5 Vùng Mạng Cô lập trong Production (`prod.yml`)
 
@@ -104,7 +114,7 @@ Dự án duy trì cấu trúc 4 kho độc lập theo giấy phép Pure-OSI (`Ap
 
 ## Kiểm chứng Hạ tầng & Đặc tả Sống
 
-Tầng Plane 6 cung cấp các điểm cuối HTTP chuẩn hóa để kiểm tra tình trạng runtime, trích xuất đặc tả API tự động (bao gồm cả collection động `latticeCustom*`) và thu thập metric Prometheus.
+Tầng Runtime Ứng dụng và Vận hành Xuyên suốt cung cấp các điểm cuối HTTP chuẩn hóa để kiểm tra tình trạng runtime, trích xuất đặc tả API tự động (bao gồm cả collection động `latticeCustom*`) và thu thập metric Prometheus.
 
 <ApiEndpoint
   method="GET"
@@ -124,7 +134,7 @@ Tầng Plane 6 cung cấp các điểm cuối HTTP chuẩn hóa để kiểm tra
   method="GET"
   path="/api/dxos:metrics"
   auth="Bearer DX_METRICS_TOKEN | root | ldx_admin"
-  summary="Xuất 12 nhóm metric Prometheus cho độ trễ HTTP, lỗi RLS, tồn đọng outbox/DLQ, AI tokens và kết nối SSE."
+  summary="Xuất 16 nhóm metric Prometheus cho độ trễ HTTP, lỗi RLS, tồn đọng outbox/DLQ, AI tokens và kết nối SSE."
 />
 
 <CodeTabs
@@ -137,7 +147,7 @@ Tầng Plane 6 cung cấp các điểm cuối HTTP chuẩn hóa để kiểm tra
     {
       label: 'Metrics Prometheus (bash)',
       lang: 'bash',
-      code: '# Truy xuất 12 nhóm metric Prometheus của LatticeDX\ncurl -fsS -H \x22Authorization: Bearer $DX_METRICS_TOKEN\x22 \\\n  http://127.0.0.1:8080/api/dxos:metrics'
+      code: '# Truy xuất 16 nhóm metric Prometheus của LatticeDX\ncurl -fsS -H \x22Authorization: Bearer $DX_METRICS_TOKEN\x22 \\\n  http://127.0.0.1:8080/api/dxos:metrics'
     },
     {
       label: 'Cấu trúc AsyncAPI 3.0 Channels (json)',

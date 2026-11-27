@@ -372,16 +372,16 @@ const modes = computed<DiagramMode[]>(() => {
         label: isVi ? 'MẠNG APP (DEFAULT + PROFILE: PDF)' : 'APP NETWORK (DEFAULT + PROFILE: PDF)',
         x: 16,
         y: 16,
-        width: 452,
+        width: 488,
         height: 244,
         kind: 'traffic',
       },
       {
         id: 'obs-profile',
         label: isVi ? 'PROFILE: OBSERVABILITY (APP + DATA)' : 'PROFILE: OBSERVABILITY (APP + DATA)',
-        x: 484,
+        x: 520,
         y: 16,
-        width: 420,
+        width: 424,
         height: 412,
         kind: 'external',
       },
@@ -390,7 +390,7 @@ const modes = computed<DiagramMode[]>(() => {
         label: isVi ? 'MẠNG DATA (PGVECTOR + TRACES)' : 'DATA NETWORK (PGVECTOR + TRACES)',
         x: 16,
         y: 288,
-        width: 452,
+        width: 488,
         height: 140,
         kind: 'admin',
       },
@@ -402,7 +402,7 @@ const modes = computed<DiagramMode[]>(() => {
         sub: 'OTel GenAI + :metrics',
         icon: 'bot',
         x: 36,
-        y: 60,
+        y: 64,
         width: 196,
         height: 64,
         zoneId: 'obs-app',
@@ -413,8 +413,8 @@ const modes = computed<DiagramMode[]>(() => {
           protocol: 'OTLP HTTP :4318 + GET /api/dxos:metrics',
           payloadOrSchema: 'Queue 256 · Batch 64 · PII Scrubbed',
           responsibilities: isVi
-            ? 'Gắn ngữ nghĩa OTel GenAI (gen_ai.system, token), che CCCD/Phone/Bank/MST/JWT/Email trước khi gửi OTLP và xuất 12 nhóm chỉ số Prometheus.'
-            : 'Attaches OTel GenAI attributes, scrubs CCCD/Phone/Bank/MST/JWT/Email PII before OTLP export, and serves 12 Prometheus metric families.',
+            ? 'Gắn ngữ nghĩa OTel GenAI (gen_ai.system, token), che CCCD/Phone/Bank/MST/JWT/Email trước khi gửi OTLP và xuất 16 nhóm chỉ số Prometheus.'
+            : 'Attaches OTel GenAI attributes, scrubs CCCD/Phone/Bank/MST/JWT/Email PII before OTLP export, and serves 16 Prometheus metric families.',
         },
       },
       {
@@ -422,8 +422,8 @@ const modes = computed<DiagramMode[]>(() => {
         title: 'Caddy 2.10',
         sub: ':2020/metrics',
         icon: 'globe',
-        x: 260,
-        y: 60,
+        x: 296,
+        y: 64,
         width: 188,
         height: 64,
         zoneId: 'obs-app',
@@ -443,8 +443,8 @@ const modes = computed<DiagramMode[]>(() => {
         sub: 'profile:pdf · JS Off',
         icon: 'file-text',
         x: 36,
-        y: 172,
-        width: 196,
+        y: 176,
+        width: 184,
         height: 64,
         zoneId: 'obs-app',
         inspector: {
@@ -462,9 +462,9 @@ const modes = computed<DiagramMode[]>(() => {
         title: 'Keycloak 26.8',
         sub: ':9000 · KC_METRICS',
         icon: 'key',
-        x: 260,
-        y: 172,
-        width: 188,
+        x: 300,
+        y: 176,
+        width: 184,
         height: 64,
         zoneId: 'obs-app',
         inspector: {
@@ -484,7 +484,7 @@ const modes = computed<DiagramMode[]>(() => {
         icon: 'database',
         x: 36,
         y: 336,
-        width: 244,
+        width: 268,
         height: 64,
         zoneId: 'obs-data',
         inspector: {
@@ -502,9 +502,9 @@ const modes = computed<DiagramMode[]>(() => {
         title: 'OTel Collector',
         sub: ':4318 OTLP · :8889',
         icon: 'activity',
-        x: 568,
-        y: 60,
-        width: 240,
+        x: 604,
+        y: 64,
+        width: 248,
         height: 64,
         zoneId: 'obs-profile',
         inspector: {
@@ -522,9 +522,9 @@ const modes = computed<DiagramMode[]>(() => {
         title: 'Prometheus 3.3',
         sub: '4 Jobs · 5 Alerts',
         icon: 'cpu',
-        x: 568,
-        y: 172,
-        width: 240,
+        x: 604,
+        y: 176,
+        width: 248,
         height: 64,
         zoneId: 'obs-profile',
         inspector: {
@@ -533,8 +533,8 @@ const modes = computed<DiagramMode[]>(() => {
           protocol: 'HTTP Scrape · DX_METRICS_TOKEN',
           payloadOrSchema: '4 targets · 5 rules (alerts.yml) · 15d retention',
           responsibilities: isVi
-            ? 'Thu thập 4 nguồn (nocobase, caddy:2020, keycloak:9000, otel-collector:8889) và đánh giá 5 quy tắc cảnh báo RLS/DLQ/5xx.'
-            : 'Scrapes 4 targets (nocobase, caddy:2020, keycloak:9000, otel-collector:8889) and evaluates 5 RLS/DLQ/5xx alert rules.',
+            ? 'Thu thập 4 nguồn (nocobase /api/dxos:metrics, caddy:2020, keycloak:9000, otel-collector:8889) và đánh giá 5 quy tắc cảnh báo RLS/DLQ/5xx.'
+            : 'Scrapes 4 targets (nocobase /api/dxos:metrics, caddy:2020, keycloak:9000, otel-collector:8889) and evaluates 5 RLS/DLQ/5xx alert rules.',
         },
       },
       {
@@ -542,9 +542,9 @@ const modes = computed<DiagramMode[]>(() => {
         title: 'Grafana 11.5.8',
         sub: 'latticedx-360.json',
         icon: 'check-circle',
-        x: 568,
+        x: 604,
         y: 336,
-        width: 240,
+        width: 248,
         height: 64,
         zoneId: 'obs-profile',
         inspector: {
@@ -559,7 +559,17 @@ const modes = computed<DiagramMode[]>(() => {
       },
     ],
     edges: [
-      { id: 'o1', from: 'nocobase_obs', to: 'gotenberg', label: 'PDF', kind: 'flow' },
+      {
+        id: 'o1',
+        from: 'nocobase_obs',
+        to: 'gotenberg',
+        label: 'PDF',
+        kind: 'flow',
+        points: [
+          [128, 128],
+          [128, 176],
+        ],
+      },
       {
         id: 'o2',
         from: 'nocobase_obs',
@@ -567,10 +577,10 @@ const modes = computed<DiagramMode[]>(() => {
         label: 'HNSW',
         kind: 'primary',
         points: [
-          [224, 124],
-          [224, 152],
-          [244, 152],
-          [244, 336],
+          [204, 128],
+          [204, 154],
+          [260, 154],
+          [260, 336],
         ],
       },
       {
@@ -580,11 +590,25 @@ const modes = computed<DiagramMode[]>(() => {
         label: 'OTLP',
         kind: 'primary',
         points: [
-          [200, 124],
-          [200, 144],
-          [524, 144],
-          [524, 92],
-          [568, 92],
+          [172, 128],
+          [172, 144],
+          [536, 144],
+          [536, 96],
+          [604, 96],
+        ],
+      },
+      {
+        id: 'o8',
+        from: 'nocobase_obs',
+        to: 'prometheus',
+        label: ':metrics',
+        kind: 'primary',
+        points: [
+          [134, 64],
+          [134, 50],
+          [568, 50],
+          [568, 182],
+          [604, 182],
         ],
       },
       {
@@ -594,15 +618,45 @@ const modes = computed<DiagramMode[]>(() => {
         label: ':2020',
         kind: 'flow',
         points: [
-          [448, 108],
-          [504, 108],
-          [504, 188],
-          [568, 188],
+          [484, 108],
+          [542, 108],
+          [542, 198],
+          [604, 198],
         ],
       },
-      { id: 'o5', from: 'keycloak_obs', to: 'prometheus', label: ':9000', kind: 'flow' },
-      { id: 'o6', from: 'otel_collector', to: 'prometheus', label: ':8889', kind: 'primary' },
-      { id: 'o7', from: 'prometheus', to: 'grafana', label: 'PromQL', kind: 'primary' },
+      {
+        id: 'o5',
+        from: 'keycloak_obs',
+        to: 'prometheus',
+        label: ':9000',
+        kind: 'flow',
+        points: [
+          [484, 214],
+          [604, 214],
+        ],
+      },
+      {
+        id: 'o6',
+        from: 'otel_collector',
+        to: 'prometheus',
+        label: ':8889',
+        kind: 'primary',
+        points: [
+          [728, 128],
+          [728, 176],
+        ],
+      },
+      {
+        id: 'o7',
+        from: 'prometheus',
+        to: 'grafana',
+        label: 'PromQL',
+        kind: 'primary',
+        points: [
+          [728, 240],
+          [728, 336],
+        ],
+      },
     ],
     steps: [
       {
@@ -620,14 +674,14 @@ const modes = computed<DiagramMode[]>(() => {
       {
         id: 'step-prom',
         title: isVi ? 'Thu thập 4 Nguồn & Grafana 360' : '4-Target Prometheus Scrape & Grafana',
-        activeNodes: ['caddy_obs', 'keycloak_obs', 'otel_collector', 'prometheus', 'grafana'],
-        activeEdges: ['o4', 'o5', 'o6', 'o7'],
+        activeNodes: ['nocobase_obs', 'caddy_obs', 'keycloak_obs', 'otel_collector', 'prometheus', 'grafana'],
+        activeEdges: ['o8', 'o4', 'o5', 'o6', 'o7'],
         description: isVi
-          ? 'Prometheus 3.3 thu thập nocobase (/api/dxos:metrics), caddy:2020, keycloak:9000 và otel-collector:8889, cấp dữ liệu cho Grafana.'
-          : 'Prometheus 3.3 scrapes nocobase (/api/dxos:metrics), caddy:2020, keycloak:9000, and otel-collector:8889 for Grafana.',
+          ? 'Prometheus 3.3 thu thập đủ 4 nguồn: nocobase (/api/dxos:metrics), caddy:2020, keycloak:9000 và otel-collector:8889, cấp dữ liệu cho Grafana.'
+          : 'Prometheus 3.3 scrapes all 4 targets: nocobase (/api/dxos:metrics), caddy:2020, keycloak:9000, and otel-collector:8889 for Grafana.',
         route: 'GET /api/dxos:metrics (DX_METRICS_TOKEN)',
         payload: '4 targets · 5 alerts.yml · 15d retention',
-        chips: ['latticedx-360.json', '5 Alert Rules'],
+        chips: ['latticedx-360.json', '4 Scrape Jobs'],
       },
       {
         id: 'step-pdf-rag',
@@ -935,7 +989,7 @@ const modes = computed<DiagramMode[]>(() => {
   <DiagramCanvas
     :title="title"
     :caption="caption"
-    viewBox="0 0 920 444"
+    viewBox="0 0 960 444"
     :modes="modes"
     :lang="resolvedLang"
   />

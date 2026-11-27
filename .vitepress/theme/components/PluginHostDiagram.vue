@@ -570,17 +570,17 @@ const contractZones = computed<DiagramZone[]>(() =>
           label: 'Chuỗi Đóng gói Plugin (esbuild 0.28.2 & nocobase-externals.mjs)',
           x: 16,
           y: 12,
-          width: 848,
-          height: 204,
+          width: 888,
+          height: 212,
           kind: 'admin',
         },
         {
           id: 'cz-runtime',
           label: 'Liên kết Runtime & Tuân thủ Điều 5.2',
           x: 16,
-          y: 240,
-          width: 848,
-          height: 132,
+          y: 248,
+          width: 888,
+          height: 136,
           kind: 'external',
         },
       ]
@@ -590,17 +590,17 @@ const contractZones = computed<DiagramZone[]>(() =>
           label: 'Plugin Build Pipeline (esbuild 0.28.2 & nocobase-externals.mjs)',
           x: 16,
           y: 12,
-          width: 848,
-          height: 204,
+          width: 888,
+          height: 212,
           kind: 'admin',
         },
         {
           id: 'cz-runtime',
           label: 'Runtime Resolution & Clause 5.2 Attribution',
           x: 16,
-          y: 240,
-          width: 848,
-          height: 132,
+          y: 248,
+          width: 888,
+          height: 136,
           kind: 'external',
         },
       ],
@@ -614,9 +614,9 @@ const contractNodes = computed<DiagramNode[]>(() => {
       title: isVi ? 'Mã nguồn Plugin' : 'Plugin Sources',
       sub: 'src/server · client-v2',
       icon: 'file-text',
-      x: 40,
-      y: 56,
-      width: 216,
+      x: 32,
+      y: 88,
+      width: 204,
       height: 64,
       zoneId: 'cz-build',
       inspector: isVi
@@ -626,7 +626,7 @@ const contractNodes = computed<DiagramNode[]>(() => {
             protocol: 'SPDX Apache-2.0 · supportedVersions: 2.2.x',
             payloadOrSchema: 'sdkProvidedByHost: true · testedRuntime: 2.2.50',
             responsibilities:
-              'Mỗi plugin khai báo rõ sdkProvidedByHost: true, có LICENSE/README riêng và không nhúng bất kỳ submodule upstream nào.',
+              'Mỗi plugin khai báo rõ sdkProvidedByHost: true, có LICENSE/README riêng và tách biệt hai nhánh xử lý khi biên dịch esbuild.',
           }
         : {
             role: 'Standalone Apache-2.0 Plugin Source Trees',
@@ -634,64 +634,64 @@ const contractNodes = computed<DiagramNode[]>(() => {
             protocol: 'SPDX Apache-2.0 · supportedVersions: 2.2.x',
             payloadOrSchema: 'sdkProvidedByHost: true · testedRuntime: 2.2.50',
             responsibilities:
-              'Each plugin declares sdkProvidedByHost: true with its own LICENSE and README and zero upstream git submodules.',
+              'Each plugin declares sdkProvidedByHost: true with its own LICENSE and splits into externalized host SDKs and bundled Pure-OSI libs.',
           },
     },
     {
       id: 'c-externals',
       title: 'Host Externals',
-      sub: 'nocobase-externals.mjs',
+      sub: '@nocobase/* · React · AntD',
       icon: 'shield',
-      x: 332,
-      y: 56,
-      width: 216,
-      height: 64,
+      x: 328,
+      y: 44,
+      width: 228,
+      height: 60,
       zoneId: 'cz-build',
       focal: true,
       inspector: isVi
         ? {
-            role: 'Danh sách Gói Dùng chung do Host Cung cấp',
+            role: 'Loại trừ SDK NocoBase và vendor UI khỏi bundle plugin',
             packageOrPort: 'scripts/lib/nocobase-externals.mjs',
             protocol: 'react@18.2.0 · antd@5.24.2 · @nocobase/*',
-            payloadOrSchema: 'server, auth, plugin-auth, database, client, client-v2, workflow',
+            payloadOrSchema: 'Stripped at build time (externalized)',
             responsibilities:
-              'Loại trừ 7 gói SDK NocoBase và vendor UI khỏi bundle plugin để tránh xung đột phiên bản hoặc nhân bản thư viện khi chạy.',
+              'Loại trừ 7 gói @nocobase/* và React/AntD khỏi bản build để runtime host cung cấp trực tiếp, không đóng gói chép lại.',
           }
         : {
-            role: 'Shared Host Vendor & SDK External Registry',
+            role: 'Host Vendor & SDK Externals (Stripped at Build)',
             packageOrPort: 'scripts/lib/nocobase-externals.mjs',
             protocol: 'react@18.2.0 · antd@5.24.2 · @nocobase/*',
-            payloadOrSchema: 'server, auth, plugin-auth, database, client, client-v2, workflow',
+            payloadOrSchema: 'Stripped at build time (externalized)',
             responsibilities:
-              'Marks React, AntD, and 7 NocoBase SDK packages external during bundling so host runtime symbols resolve cleanly.',
+              'Marks React, AntD, and 7 @nocobase/* SDK packages external so esbuild strips them and resolves symbols from the host container.',
           },
     },
     {
       id: 'c-bundled',
-      title: isVi ? 'Gói Nhúng Pure-OSI' : 'Bundled OSI Deps',
-      sub: 'esbuild 0.28.2 · UMD',
+      title: isVi ? 'Thư viện Pure-OSI' : 'Bundled Pure-OSI Libs',
+      sub: 'openid · maplibre · xyflow',
       icon: 'box',
-      x: 624,
-      y: 56,
-      width: 216,
-      height: 64,
+      x: 328,
+      y: 136,
+      width: 228,
+      height: 60,
       zoneId: 'cz-build',
       inspector: isVi
         ? {
-            role: 'Đóng gói Thư viện Chuyên biệt Thuần OSI',
+            role: 'Đóng gói Thư viện Chuyên biệt Thuần OSI song song',
             packageOrPort: 'openid-client · maplibre-gl · @xyflow/react',
             protocol: 'MIT / Apache-2.0 Bundled UMD & CJS',
             payloadOrSchema: 'openid-client@6.8.9 | maplibre-gl@6.19.0 | @xyflow/react@12.12.1',
             responsibilities:
-              'Chỉ đóng gói nội bộ các thư viện MIT/Apache-2.0 cần thiết như openid-client, MapLibre CSS/worker và React Flow + Dagre.',
+              'Đóng gói nội bộ riêng các thư viện MIT/Apache-2.0 cần thiết vào dist/* độc lập với nhánh Host Externals.',
           }
         : {
-            role: 'Self-Contained Pure-OSI Dependency Bundles',
+            role: 'Parallel Self-Contained Pure-OSI Dependency Bundles',
             packageOrPort: 'openid-client · maplibre-gl · @xyflow/react',
             protocol: 'MIT / Apache-2.0 Bundled UMD & CJS',
             payloadOrSchema: 'openid-client@6.8.9 | maplibre-gl@6.19.0 | @xyflow/react@12.12.1',
             responsibilities:
-              'Bundles MIT/Apache-2.0 specialized packages such as openid-client, MapLibre GL, and @xyflow/react into plugin dist outputs.',
+              'Bundles MIT/Apache-2.0 libraries (openid-client, maplibre-gl, @xyflow/react) directly into dist/* alongside externalized host references.',
           },
     },
     {
@@ -699,19 +699,19 @@ const contractNodes = computed<DiagramNode[]>(() => {
       title: isVi ? 'Đầu ra dist/*' : 'Compiled dist/*',
       sub: 'server · client · client-v2',
       icon: 'terminal',
-      x: 332,
-      y: 140,
-      width: 216,
+      x: 648,
+      y: 88,
+      width: 240,
       height: 64,
       zoneId: 'cz-build',
       inspector: isVi
         ? {
-            role: 'Điểm vào Đã Biên dịch Sẵn sàng Gắn Host',
+            role: 'Điểm vào Đã Biên dịch Hội tụ Sẵn sàng Gắn Host',
             packageOrPort: 'dist/server/index.js · dist/client-v2/index.js',
             protocol: 'CommonJS / UMD · externalVersion.js',
             payloadOrSchema: 'action-bridge/dist/externalVersion.js',
             responsibilities:
-              'Xuất các entrypoint server, client, client-v2 và tệp externalVersion.js để tương thích vòng đời plugin NocoBase 2.2.50.',
+              'Hợp nhất các tham chiếu external tới Host SDK và các gói Pure-OSI đã đóng gói thành artifact dist/* gắn :ro vào NocoBase.',
           }
         : {
             role: 'Host-Ready Compiled Plugin Entrypoints',
@@ -719,7 +719,7 @@ const contractNodes = computed<DiagramNode[]>(() => {
             protocol: 'CommonJS / UMD · externalVersion.js',
             payloadOrSchema: 'action-bridge/dist/externalVersion.js',
             responsibilities:
-              'Emits server, client, and client-v2 entrypoints alongside externalVersion.js metadata for NocoBase 2.2.50 loading.',
+              'Converges externalized @nocobase/* import shims and bundled Pure-OSI libs into dist/* artifacts mounted :ro into NocoBase.',
           },
     },
     {
@@ -727,15 +727,15 @@ const contractNodes = computed<DiagramNode[]>(() => {
       title: 'NocoBase 2.2.50',
       sub: 'node_modules/@latticedx/*',
       icon: 'server',
-      x: 164,
-      y: 288,
-      width: 240,
+      x: 108,
+      y: 292,
+      width: 256,
       height: 64,
       zoneId: 'cz-runtime',
       focal: true,
       inspector: isVi
         ? {
-            role: 'Runtime Host Giải quyết Phụ thuộc Ngoại tuyến',
+            role: 'Runtime Host Giải quyết Phụ thuộc Ngoại tuyến (:ro Mount)',
             packageOrPort: 'nocobase/nocobase:2.2.50 · :ro mount',
             protocol: 'OCI Container · Read-Only Plugin Bindings',
             payloadOrSchema: '/app/nocobase/node_modules/@latticedx/*',
@@ -743,7 +743,7 @@ const contractNodes = computed<DiagramNode[]>(() => {
               'Cung cấp các module @nocobase/* từ trong container host khi 7 plugin khởi động và đăng ký tài nguyên API.',
           }
         : {
-            role: 'External Host Container Resolving SDK Imports',
+            role: 'External Host Container Resolving SDK Imports (:ro Mount)',
             packageOrPort: 'nocobase/nocobase:2.2.50 · :ro mount',
             protocol: 'OCI Container · Read-Only Plugin Bindings',
             payloadOrSchema: '/app/nocobase/node_modules/@latticedx/*',
@@ -753,12 +753,12 @@ const contractNodes = computed<DiagramNode[]>(() => {
     },
     {
       id: 'c-clause52',
-      title: isVi ? 'Ghi nhận Điều 5.2' : 'Clause 5.2 Notice',
+      title: isVi ? 'Ghi nhận Điều 5.2' : 'Clause 5.2 Attribution',
       sub: 'Powered by NocoBase v2.2.50',
       icon: 'check-circle',
-      x: 476,
-      y: 288,
-      width: 240,
+      x: 520,
+      y: 292,
+      width: 264,
       height: 64,
       zoneId: 'cz-runtime',
       inspector: isVi
@@ -790,40 +790,49 @@ const contractEdges = computed<DiagramEdge[]>(() => [
     label: 'Strip SDK',
     kind: 'primary',
     points: [
-      [256, 88],
-      [332, 88],
+      [236, 108],
+      [280, 108],
+      [280, 74],
+      [328, 74],
     ],
   },
   {
     id: 'ce-2',
-    from: 'c-externals',
+    from: 'c-src',
     to: 'c-bundled',
-    label: 'esbuild',
+    label: 'esbuild OSI',
     kind: 'flow',
     points: [
-      [548, 88],
-      [624, 88],
+      [236, 132],
+      [280, 132],
+      [280, 166],
+      [328, 166],
     ],
   },
   {
     id: 'ce-3',
-    from: 'c-bundled',
+    from: 'c-externals',
     to: 'c-dist',
-    kind: 'flow',
+    label: 'externals',
+    kind: 'primary',
     points: [
-      [732, 120],
-      [732, 172],
-      [548, 172],
+      [556, 74],
+      [602, 74],
+      [602, 108],
+      [648, 108],
     ],
   },
   {
     id: 'ce-4',
-    from: 'c-externals',
+    from: 'c-bundled',
     to: 'c-dist',
-    kind: 'primary',
+    label: 'bundled',
+    kind: 'flow',
     points: [
-      [440, 120],
-      [440, 140],
+      [556, 166],
+      [602, 166],
+      [602, 132],
+      [648, 132],
     ],
   },
   {
@@ -833,10 +842,10 @@ const contractEdges = computed<DiagramEdge[]>(() => [
     label: ':ro Mount',
     kind: 'primary',
     points: [
-      [440, 204],
-      [440, 224],
-      [284, 224],
-      [284, 288],
+      [768, 152],
+      [768, 236],
+      [236, 236],
+      [236, 292],
     ],
   },
   {
@@ -846,8 +855,8 @@ const contractEdges = computed<DiagramEdge[]>(() => [
     label: 'Clause 5.2',
     kind: 'dashed',
     points: [
-      [404, 320],
-      [476, 320],
+      [364, 324],
+      [520, 324],
     ],
   },
 ]);
@@ -857,21 +866,21 @@ const contractSteps = computed<DiagramStep[]>(() =>
     ? [
         {
           id: 'cs-1',
-          title: 'Loại trừ Host SDK khi Biên dịch',
-          activeNodes: ['c-src', 'c-externals', 'c-bundled'],
-          activeEdges: ['ce-1', 'ce-2'],
+          title: 'Tách Host Externals & Đóng gói Pure-OSI Song song',
+          activeNodes: ['c-src', 'c-externals', 'c-bundled', 'c-dist'],
+          activeEdges: ['ce-1', 'ce-2', 'ce-3', 'ce-4'],
           description:
-            'nocobase-externals.mjs đánh dấu @nocobase/*, react và antd là external trong khi esbuild chỉ đóng gói các thư viện Pure-OSI như MapLibre và React Flow.',
-          route: 'scripts/lib/nocobase-externals.mjs',
+            'Plugin Sources tách song song thành Host Externals (@nocobase/*, React, AntD bị loại trừ) và Bundled Pure-OSI Libs (openid-client, maplibre-gl, @xyflow/react), cả hai hội tụ vào dist/*.',
+          route: 'scripts/lib/nocobase-externals.mjs -> dist/*',
           chips: ['sdkProvidedByHost: true', 'esbuild 0.28.2', 'MIT/Apache-2.0'],
         },
         {
           id: 'cs-2',
-          title: 'Gắn dist/* vào Container NocoBase 2.2.50',
+          title: 'Gắn :ro vào NocoBase 2.2.50 & Giữ Điều 5.2',
           activeNodes: ['c-dist', 'c-host', 'c-clause52'],
-          activeEdges: ['ce-4', 'ce-5', 'ce-6'],
+          activeEdges: ['ce-5', 'ce-6'],
           description:
-            'Các tệp dist/* được gắn chỉ đọc vào container nocobase/nocobase:2.2.50 và giữ nguyên nhận diện Powered by NocoBase theo Điều 5.2.',
+            'Các tệp dist/* được gắn chỉ đọc (:ro) vào container nocobase/nocobase:2.2.50 và giữ nguyên nhận diện Powered by NocoBase theo Điều 5.2.',
           route: '/app/nocobase/node_modules/@latticedx/*',
           chips: ['Read-Only :ro', 'Clause 5.2', 'Zero Upstream Fork'],
         },
@@ -879,21 +888,21 @@ const contractSteps = computed<DiagramStep[]>(() =>
     : [
         {
           id: 'cs-1',
-          title: 'Externalize Host SDK at Build Time',
-          activeNodes: ['c-src', 'c-externals', 'c-bundled'],
-          activeEdges: ['ce-1', 'ce-2'],
+          title: 'Split Host Externals & Bundle Pure-OSI into dist/*',
+          activeNodes: ['c-src', 'c-externals', 'c-bundled', 'c-dist'],
+          activeEdges: ['ce-1', 'ce-2', 'ce-3', 'ce-4'],
           description:
-            'nocobase-externals.mjs externalizes @nocobase/*, react, and antd while esbuild bundles only Pure-OSI packages such as MapLibre GL and @xyflow/react.',
-          route: 'scripts/lib/nocobase-externals.mjs',
+            'Plugin Sources split in parallel into Host Externals (@nocobase/*, React, AntD stripped) and Bundled Pure-OSI Libs (openid-client, maplibre-gl, @xyflow/react), both converging into Compiled dist/*.',
+          route: 'scripts/lib/nocobase-externals.mjs -> dist/*',
           chips: ['sdkProvidedByHost: true', 'esbuild 0.28.2', 'MIT/Apache-2.0'],
         },
         {
           id: 'cs-2',
-          title: 'Mount dist/* & Preserve Clause 5.2',
+          title: 'Mount :ro into NocoBase 2.2.50 & Preserve Clause 5.2',
           activeNodes: ['c-dist', 'c-host', 'c-clause52'],
-          activeEdges: ['ce-4', 'ce-5', 'ce-6'],
+          activeEdges: ['ce-5', 'ce-6'],
           description:
-            'Compiled plugin artifacts mount read-only into nocobase/nocobase:2.2.50 while keeping Powered by NocoBase v2.2.50 attribution intact.',
+            'Compiled dist/* artifacts mount read-only (:ro) into nocobase/nocobase:2.2.50 while keeping Powered by NocoBase v2.2.50 attribution intact.',
           route: '/app/nocobase/node_modules/@latticedx/*',
           chips: ['Read-Only :ro', 'Clause 5.2', 'Zero Upstream Fork'],
         },
@@ -961,7 +970,7 @@ const captionText = computed(() =>
   <DiagramCanvas
     :title="titleText"
     :caption="captionText"
-    view-box="0 0 880 392"
+    view-box="0 0 920 400"
     :modes="modes"
     :compact="props.compact"
     :lang="locale"

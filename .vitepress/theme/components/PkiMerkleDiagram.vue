@@ -144,7 +144,7 @@ const nodes = computed<DiagramNode[]>(() => [
   {
     id: 'dxos_ledger_api',
     title: 'dxosLedger API',
-    sub: 'verify · verifyMerkle',
+    sub: 'verify · exportProof',
     icon: 'check-circle',
     x: 672,
     y: 180,
@@ -155,7 +155,7 @@ const nodes = computed<DiagramNode[]>(() => [
       role: isVi.value ? 'API Kiểm chứng Chuỗi & Bằng chứng' : 'Ledger & Merkle Verification API',
       packageOrPort: 'GET/POST /api/dxosLedger:*',
       protocol: 'REST · Bearer JWT | ldx_pat_* (ledger)',
-      payloadOrSchema: 'list · get · verify · merkleRoot · verifyMerkle · exportBundle',
+      payloadOrSchema: 'publicKey · entries · status · verify · signDocument · verifySignature · rotateKey · exportProof',
       responsibilities: isVi.value
         ? 'Cung cấp kiểm tra toàn vẹn chuỗi băm, đối chiếu chữ ký Ed25519 bằng khóa công khai, tính gốc Merkle và xuất gói bằng chứng kiểm toán.'
         : 'Exposes chain integrity verification, public-key Ed25519 signature checks, Merkle root computation, and audit evidence bundle exports.',
@@ -290,9 +290,9 @@ const steps = computed<DiagramStep[]>(() => [
     activeNodes: ['crypto_ledger', 'merkle_root', 'dxos_ledger_api'],
     activeEdges: ['e4', 'e5', 'e6'],
     description: isVi.value
-      ? 'Các entryHash được gộp thành cây SHA-256 nhị phân để kiểm chứng tập bằng chứng thông qua dxosLedger:merkleRoot và dxosLedger:verifyMerkle.'
-      : 'Ordered entryHash leaves fold into a binary SHA-256 Merkle root exposed through dxosLedger:merkleRoot and dxosLedger:verifyMerkle.',
-    route: 'GET /api/dxosLedger:merkleRoot',
+      ? 'Các entryHash được gộp thành cây SHA-256 nhị phân để kiểm chứng tập bằng chứng thông qua dxosLedger:status, dxosLedger:verify và dxosLedger:exportProof.'
+      : 'Ordered entryHash leaves fold into a binary SHA-256 Merkle root exposed through dxosLedger:status, dxosLedger:verify, and dxosLedger:exportProof.',
+    route: 'GET /api/dxosLedger:status | :verify | :exportProof',
     payload: 'sha256Hex("${left}${right}") · odd level duplicates rightmost',
     chips: ['Merkle Proof', 'Audit Export'],
   },

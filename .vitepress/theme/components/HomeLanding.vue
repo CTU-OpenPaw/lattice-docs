@@ -86,7 +86,7 @@ const content = computed(() => {
     const capabilities: CapabilityCard[] = [
       {
         icon: 'layers',
-        title: 'Kiến trúc 6-Plane DX-OS',
+        title: 'Kiến trúc 4 Tầng DX-OS',
         description:
           'Bảy plugin Apache-2.0 nạp qua sdkProvidedByHost lên host NocoBase 2.2.50, phân tách trên 5 vùng mạng Docker cô lập.',
         link: '/architecture/overview',
@@ -173,7 +173,7 @@ const content = computed(() => {
       eyebrow: 'Apache-2.0 · LatticeDX v0.4.2',
       title: 'Nền tảng Điều hành Doanh nghiệp Mở',
       summary:
-        'Kiến trúc sáu phân hệ hợp nhất vận hành đa cổng, tự động hóa DAG và DMN, cô lập PostgreSQL 16 FORCE RLS, bản sao số IIoT và tác nhân AI có kiểm soát trên NocoBase 2.2.50.',
+        'Kiến trúc 4 tầng hợp nhất vận hành đa cổng, tự động hóa DAG và DMN, cô lập PostgreSQL 16 FORCE RLS, bản sao số IIoT và tác nhân AI có kiểm soát trên NocoBase 2.2.50.',
       primaryCta: 'Bắt đầu nhanh',
       primaryLink: '/getting-started/quickstart',
       secondaryCta: 'Kiến trúc hệ thống',
@@ -234,7 +234,7 @@ const content = computed(() => {
   const capabilities: CapabilityCard[] = [
     {
       icon: 'layers',
-      title: '6-Plane DX-OS',
+      title: '4-Tier DX-OS Architecture',
       description:
         'Seven Apache-2.0 plugins mounted onto NocoBase 2.2.50 via sdkProvidedByHost across five isolated Compose networks.',
       link: '/en/architecture/overview',
@@ -321,12 +321,12 @@ const content = computed(() => {
     eyebrow: 'Apache-2.0 · LatticeDX v0.4.2',
     title: 'Open Enterprise Operating Platform',
     summary:
-      'Six coordinated planes uniting multi-portal operations, DAG and DMN automation, PostgreSQL 16 FORCE RLS, IIoT digital twins, and governed AI agents on NocoBase 2.2.50.',
+      'Four-tier architecture uniting multi-portal operations, DAG and DMN automation, PostgreSQL 16 FORCE RLS, IIoT digital twins, and governed AI agents on NocoBase 2.2.50.',
     primaryCta: 'Quickstart',
     primaryLink: '/en/getting-started/quickstart',
     secondaryCta: 'Architecture',
     secondaryLink: '/en/architecture/overview',
-    heroDiagramNote: 'Select any plane or flow step to inspect package bindings, ports, and boundaries.',
+    heroDiagramNote: 'Select any tier module or flow step to inspect package bindings, ports, and boundaries.',
     capabilitiesEyebrow: '01 · CAPABILITIES',
     capabilitiesHeading: 'Core platform subsystems',
     ecosystemEyebrow: '02 · ECOSYSTEM',

@@ -196,14 +196,15 @@ const labels = computed(() =>
   display: flex;
   flex: 1 1 auto;
   min-width: 0;
+  flex-wrap: wrap;
   align-items: stretch;
-  overflow-x: auto;
   gap: 2px;
 }
 
 .ldx-tab-btn {
   position: relative;
   flex-shrink: 0;
+  max-width: 100%;
   padding: 9px 12px;
   border: 0;
   border-bottom: 2px solid transparent;
@@ -232,6 +233,7 @@ const labels = computed(() =>
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  padding: 6px 0;
 }
 
 .ldx-code-lang {
@@ -316,7 +318,9 @@ const labels = computed(() =>
     padding: 5px 10px;
     border: 1px solid transparent;
     border-radius: 4px;
-    white-space: nowrap;
+    white-space: normal;
+    text-align: left;
+    line-height: 1.35;
     flex-shrink: 0;
   }
 
@@ -328,6 +332,7 @@ const labels = computed(() =>
 
   .ldx-code-actions {
     margin-left: auto;
+    padding: 0;
   }
 
   .ldx-copy-text {

@@ -39,9 +39,9 @@ const modes = computed<DiagramMode[]>(() => {
         label: 'Đánh giá FEEL',
         summary: 'dxosDmn · 1..50 in/out · <=500 rules',
         zones: [
-          { id: 'caller', label: 'Nguồn gọi & Mô phỏng', x: 16, y: 16, width: 212, height: 368, kind: 'admin' },
-          { id: 'dmn-engine', label: 'Động cơ DMN (dmn-engine.js)', x: 244, y: 16, width: 404, height: 368, kind: 'traffic' },
-          { id: 'actions', label: 'Hành động & Kiểm toán', x: 664, y: 16, width: 200, height: 368, kind: 'admin' },
+          { id: 'caller', label: 'Nguồn gọi & Mô phỏng', x: 16, y: 16, width: 200, height: 368, kind: 'admin' },
+          { id: 'dmn-engine', label: 'Động cơ DMN (dmn-engine.js)', x: 232, y: 16, width: 420, height: 368, kind: 'traffic' },
+          { id: 'actions', label: 'Hành động & Kiểm toán', x: 660, y: 16, width: 204, height: 368, kind: 'admin' },
         ],
         nodes: [
           {
@@ -51,7 +51,7 @@ const modes = computed<DiagramMode[]>(() => {
             icon: 'file-text',
             x: 28,
             y: 76,
-            width: 184,
+            width: 176,
             height: 64,
             zoneId: 'caller',
             inspector: {
@@ -70,7 +70,7 @@ const modes = computed<DiagramMode[]>(() => {
             icon: 'terminal',
             x: 28,
             y: 224,
-            width: 184,
+            width: 176,
             height: 64,
             zoneId: 'caller',
             inspector: {
@@ -84,12 +84,12 @@ const modes = computed<DiagramMode[]>(() => {
           },
           {
             id: 'dmn-eval-api',
-            title: 'Bộ điều phối DMN',
+            title: 'Điều phối DMN',
             sub: 'dxosDmn:evaluate',
             icon: 'cpu',
-            x: 264,
+            x: 248,
             y: 76,
-            width: 160,
+            width: 156,
             height: 64,
             zoneId: 'dmn-engine',
             focal: true,
@@ -107,9 +107,9 @@ const modes = computed<DiagramMode[]>(() => {
             title: 'Kho Bảng DMN',
             sub: 'DecisionTables',
             icon: 'database',
-            x: 264,
+            x: 248,
             y: 224,
-            width: 160,
+            width: 156,
             height: 64,
             zoneId: 'dmn-engine',
             inspector: {
@@ -126,9 +126,9 @@ const modes = computed<DiagramMode[]>(() => {
             title: 'So khớp FEEL',
             sub: 'ALLOWED_OPERATORS',
             icon: 'git-branch',
-            x: 472,
+            x: 456,
             y: 76,
-            width: 168,
+            width: 184,
             height: 64,
             zoneId: 'dmn-engine',
             focal: true,
@@ -146,9 +146,9 @@ const modes = computed<DiagramMode[]>(() => {
             title: 'Gom Hit Policy',
             sub: 'FIRST | UNIQUE | ...',
             icon: 'workflow',
-            x: 472,
+            x: 456,
             y: 224,
-            width: 168,
+            width: 184,
             height: 64,
             zoneId: 'dmn-engine',
             inspector: {
@@ -165,9 +165,9 @@ const modes = computed<DiagramMode[]>(() => {
             title: 'Ngữ cảnh Hạ nguồn',
             sub: 'dmnResult · outputs',
             icon: 'check-circle',
-            x: 680,
+            x: 672,
             y: 120,
-            width: 168,
+            width: 184,
             height: 64,
             zoneId: 'actions',
             inspector: {
@@ -184,9 +184,9 @@ const modes = computed<DiagramMode[]>(() => {
             title: 'Sổ cái Ed25519',
             sub: 'dmn.table_saved',
             icon: 'lock',
-            x: 680,
+            x: 672,
             y: 256,
-            width: 168,
+            width: 184,
             height: 64,
             zoneId: 'actions',
             inspector: {
@@ -207,8 +207,8 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'eval',
             kind: 'primary',
             points: [
-              [212, 108],
-              [264, 108],
+              [204, 108],
+              [248, 108],
             ],
           },
           {
@@ -218,10 +218,10 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'sim',
             kind: 'dashed',
             points: [
-              [120, 224],
-              [120, 180],
-              [312, 180],
-              [312, 140],
+              [116, 224],
+              [116, 180],
+              [300, 180],
+              [300, 140],
             ],
           },
           {
@@ -231,8 +231,8 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'load',
             kind: 'flow',
             points: [
-              [376, 224],
-              [376, 140],
+              [360, 224],
+              [360, 140],
             ],
           },
           {
@@ -242,8 +242,8 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'rules',
             kind: 'primary',
             points: [
-              [424, 108],
-              [472, 108],
+              [404, 108],
+              [456, 108],
             ],
           },
           {
@@ -253,8 +253,8 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'matches',
             kind: 'primary',
             points: [
-              [556, 140],
-              [556, 224],
+              [548, 140],
+              [548, 224],
             ],
           },
           {
@@ -267,7 +267,7 @@ const modes = computed<DiagramMode[]>(() => {
               [640, 248],
               [656, 248],
               [656, 152],
-              [680, 152],
+              [672, 152],
             ],
           },
           {
@@ -277,8 +277,8 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'saveTable',
             kind: 'dashed',
             points: [
-              [344, 288],
-              [344, 340],
+              [328, 288],
+              [328, 340],
               [764, 340],
               [764, 320],
             ],
@@ -621,7 +621,7 @@ const modes = computed<DiagramMode[]>(() => {
         summary: 'cold_chain_approval_v1 · PRIORITY · MKT & FEFO',
         zones: [
           { id: 'telemetry-facts', label: 'Dữ liệu Thực tế Lô & Nhiệt độ', x: 16, y: 16, width: 256, height: 368, kind: 'traffic' },
-          { id: 'decision-flow', label: 'Đánh giá cold_chain_approval_v1', x: 288, y: 16, width: 576, height: 368, kind: 'admin' },
+          { id: 'decision-flow', label: 'Đánh giá cold_chain_approval_v1', x: 288, y: 16, width: 616, height: 368, kind: 'admin' },
         ],
         nodes: [
           {
@@ -705,9 +705,9 @@ const modes = computed<DiagramMode[]>(() => {
             title: 'Chọn PRIORITY',
             sub: 'priority: 90',
             icon: 'workflow',
-            x: 516,
+            x: 508,
             y: 164,
-            width: 152,
+            width: 168,
             height: 64,
             zoneId: 'decision-flow',
             focal: true,
@@ -725,7 +725,7 @@ const modes = computed<DiagramMode[]>(() => {
             title: 'Giữ lô MKT',
             sub: 'holdLotByMkt',
             icon: 'lock',
-            x: 704,
+            x: 744,
             y: 92,
             width: 144,
             height: 64,
@@ -744,7 +744,7 @@ const modes = computed<DiagramMode[]>(() => {
             title: 'Duyệt QA / QL',
             sub: 'ldx_manager',
             icon: 'bell',
-            x: 704,
+            x: 744,
             y: 236,
             width: 144,
             height: 64,
@@ -813,10 +813,10 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'hold',
             kind: 'primary',
             points: [
-              [668, 184],
-              [684, 184],
-              [684, 124],
-              [704, 124],
+              [676, 184],
+              [710, 184],
+              [710, 124],
+              [744, 124],
             ],
           },
           {
@@ -826,10 +826,10 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'HITL',
             kind: 'flow',
             points: [
-              [668, 212],
-              [684, 212],
-              [684, 268],
-              [704, 268],
+              [676, 212],
+              [710, 212],
+              [710, 268],
+              [744, 268],
             ],
           },
         ],
@@ -878,9 +878,9 @@ const modes = computed<DiagramMode[]>(() => {
       label: 'FEEL Evaluation',
       summary: 'dxosDmn · 1..50 I/O · <=500 rules',
       zones: [
-        { id: 'caller', label: 'Caller & Dry-Run Sim', x: 16, y: 16, width: 212, height: 368, kind: 'admin' },
-        { id: 'dmn-engine', label: 'DMN Engine (dmn-engine.js)', x: 244, y: 16, width: 404, height: 368, kind: 'traffic' },
-        { id: 'actions', label: 'Outputs & Audit Ledger', x: 664, y: 16, width: 200, height: 368, kind: 'admin' },
+        { id: 'caller', label: 'Caller & Dry-Run Sim', x: 16, y: 16, width: 200, height: 368, kind: 'admin' },
+        { id: 'dmn-engine', label: 'DMN Engine (dmn-engine.js)', x: 232, y: 16, width: 420, height: 368, kind: 'traffic' },
+        { id: 'actions', label: 'Outputs & Audit Ledger', x: 660, y: 16, width: 204, height: 368, kind: 'admin' },
       ],
       nodes: [
         {
@@ -890,7 +890,7 @@ const modes = computed<DiagramMode[]>(() => {
           icon: 'file-text',
           x: 28,
           y: 76,
-          width: 184,
+          width: 176,
           height: 64,
           zoneId: 'caller',
           inspector: {
@@ -909,7 +909,7 @@ const modes = computed<DiagramMode[]>(() => {
           icon: 'terminal',
           x: 28,
           y: 224,
-          width: 184,
+          width: 176,
           height: 64,
           zoneId: 'caller',
           inspector: {
@@ -926,9 +926,9 @@ const modes = computed<DiagramMode[]>(() => {
           title: 'DMN Evaluator',
           sub: 'dxosDmn:evaluate',
           icon: 'cpu',
-          x: 264,
+          x: 248,
           y: 76,
-          width: 160,
+          width: 156,
           height: 64,
           zoneId: 'dmn-engine',
           focal: true,
@@ -946,9 +946,9 @@ const modes = computed<DiagramMode[]>(() => {
           title: 'Decision Tables',
           sub: 'DecisionTables',
           icon: 'database',
-          x: 264,
+          x: 248,
           y: 224,
-          width: 160,
+          width: 156,
           height: 64,
           zoneId: 'dmn-engine',
           inspector: {
@@ -965,9 +965,9 @@ const modes = computed<DiagramMode[]>(() => {
           title: 'FEEL Matcher',
           sub: 'ALLOWED_OPERATORS',
           icon: 'git-branch',
-          x: 472,
+          x: 456,
           y: 76,
-          width: 168,
+          width: 184,
           height: 64,
           zoneId: 'dmn-engine',
           focal: true,
@@ -985,9 +985,9 @@ const modes = computed<DiagramMode[]>(() => {
           title: 'Hit Aggregator',
           sub: 'FIRST | UNIQUE | ...',
           icon: 'workflow',
-          x: 472,
+          x: 456,
           y: 224,
-          width: 168,
+          width: 184,
           height: 64,
           zoneId: 'dmn-engine',
           inspector: {
@@ -1004,9 +1004,9 @@ const modes = computed<DiagramMode[]>(() => {
           title: 'Downstream Action',
           sub: 'dmnResult · outputs',
           icon: 'check-circle',
-          x: 680,
+          x: 672,
           y: 120,
-          width: 168,
+          width: 184,
           height: 64,
           zoneId: 'actions',
           inspector: {
@@ -1023,9 +1023,9 @@ const modes = computed<DiagramMode[]>(() => {
           title: 'Ed25519 Ledger',
           sub: 'dmn.table_saved',
           icon: 'lock',
-          x: 680,
+          x: 672,
           y: 256,
-          width: 168,
+          width: 184,
           height: 64,
           zoneId: 'actions',
           inspector: {
@@ -1046,8 +1046,8 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'eval',
           kind: 'primary',
           points: [
-            [212, 108],
-            [264, 108],
+            [204, 108],
+            [248, 108],
           ],
         },
         {
@@ -1057,10 +1057,10 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'sim',
           kind: 'dashed',
           points: [
-            [120, 224],
-            [120, 180],
-            [312, 180],
-            [312, 140],
+            [116, 224],
+            [116, 180],
+            [300, 180],
+            [300, 140],
           ],
         },
         {
@@ -1070,8 +1070,8 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'load',
           kind: 'flow',
           points: [
-            [376, 224],
-            [376, 140],
+            [360, 224],
+            [360, 140],
           ],
         },
         {
@@ -1081,8 +1081,8 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'rules',
           kind: 'primary',
           points: [
-            [424, 108],
-            [472, 108],
+            [404, 108],
+            [456, 108],
           ],
         },
         {
@@ -1092,8 +1092,8 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'matches',
           kind: 'primary',
           points: [
-            [556, 140],
-            [556, 224],
+            [548, 140],
+            [548, 224],
           ],
         },
         {
@@ -1106,7 +1106,7 @@ const modes = computed<DiagramMode[]>(() => {
             [640, 248],
             [656, 248],
             [656, 152],
-            [680, 152],
+            [672, 152],
           ],
         },
         {
@@ -1116,8 +1116,8 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'saveTable',
           kind: 'dashed',
           points: [
-            [344, 288],
-            [344, 340],
+            [328, 288],
+            [328, 340],
             [764, 340],
             [764, 320],
           ],
@@ -1460,7 +1460,7 @@ const modes = computed<DiagramMode[]>(() => {
       summary: 'cold_chain_approval_v1 · PRIORITY · MKT & FEFO',
       zones: [
         { id: 'telemetry-facts', label: 'Live Lot & Thermal Facts', x: 16, y: 16, width: 256, height: 368, kind: 'traffic' },
-        { id: 'decision-flow', label: 'cold_chain_approval_v1 Evaluation', x: 288, y: 16, width: 576, height: 368, kind: 'admin' },
+        { id: 'decision-flow', label: 'cold_chain_approval_v1 Evaluation', x: 288, y: 16, width: 616, height: 368, kind: 'admin' },
       ],
       nodes: [
         {
@@ -1541,12 +1541,12 @@ const modes = computed<DiagramMode[]>(() => {
         },
         {
           id: 'priority-rank',
-          title: 'PRIORITY Select',
+          title: 'PRIORITY Rule',
           sub: 'priority: 90',
           icon: 'workflow',
-          x: 516,
+          x: 508,
           y: 164,
-          width: 152,
+          width: 168,
           height: 64,
           zoneId: 'decision-flow',
           focal: true,
@@ -1564,7 +1564,7 @@ const modes = computed<DiagramMode[]>(() => {
           title: 'WMS MKT Hold',
           sub: 'holdLotByMkt',
           icon: 'lock',
-          x: 704,
+          x: 744,
           y: 92,
           width: 144,
           height: 64,
@@ -1583,7 +1583,7 @@ const modes = computed<DiagramMode[]>(() => {
           title: 'QA Escalation',
           sub: 'ldx_manager',
           icon: 'bell',
-          x: 704,
+          x: 744,
           y: 236,
           width: 144,
           height: 64,
@@ -1652,10 +1652,10 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'hold',
           kind: 'primary',
           points: [
-            [668, 184],
-            [684, 184],
-            [684, 124],
-            [704, 124],
+            [676, 184],
+            [710, 184],
+            [710, 124],
+            [744, 124],
           ],
         },
         {
@@ -1665,10 +1665,10 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'HITL',
           kind: 'flow',
           points: [
-            [668, 212],
-            [684, 212],
-            [684, 268],
-            [704, 268],
+            [676, 212],
+            [710, 212],
+            [710, 268],
+            [744, 268],
           ],
         },
       ],
@@ -1716,7 +1716,7 @@ const modes = computed<DiagramMode[]>(() => {
   <DiagramCanvas
     :title="title"
     :caption="caption"
-    viewBox="0 0 880 400"
+    viewBox="0 0 920 400"
     :modes="modes"
     :lang="resolvedLang"
   />

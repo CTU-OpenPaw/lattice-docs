@@ -238,8 +238,8 @@ const repoNodes = computed<DiagramNode[]>(() => {
     },
     {
       id: 'ext-ci',
-      title: isVi ? 'Cổng Kiểm tra CI' : 'CI & Security Gates',
-      sub: 'CodeQL · SPDX · CycloneDX',
+      title: isVi ? 'Cổng CI Trong Repo' : 'Repo CI & Security Gates',
+      sub: 'Check · CodeQL · Validate',
       icon: 'shield',
       x: 604,
       y: 152,
@@ -248,20 +248,20 @@ const repoNodes = computed<DiagramNode[]>(() => {
       zoneId: 'external-boundary',
       inspector: isVi
         ? {
-            role: 'Hệ thống Xác minh Tĩnh, SBOM và Kiểm tra Template',
-            packageOrPort: 'GitHub Actions · Check · CodeQL · Validate',
+            role: 'Các workflow CI/CD chạy trực tiếp trong từng kho mã nguồn',
+            packageOrPort: 'lattice-dx / lattice-docs / lattice-templates CI',
             protocol: 'CycloneDX 1.5 · SPDX Apache-2.0 · pnpm audit',
             payloadOrSchema: 'docs/sbom-cyclonedx.json | source-headers.mjs | pof:check',
             responsibilities:
-              'Kiểm tra header Apache-2.0, độ tươi mới của SBOM, phân tích bảo mật CodeQL và tính hợp lệ lược đồ template trước khi hợp nhất.',
+              'Các cổng Check, CodeQL, docs:build và validate chạy trong lattice-dx, lattice-docs và lattice-templates theo chuẩn quản trị chung từ .github.',
           }
         : {
-            role: 'Static Analysis, SBOM & Template Validation Pipeline',
-            packageOrPort: 'GitHub Actions · Check · CodeQL · Validate',
+            role: 'Per-repo CI workflows executing static, SBOM & schema gates',
+            packageOrPort: 'lattice-dx / lattice-docs / lattice-templates CI',
             protocol: 'CycloneDX 1.5 · SPDX Apache-2.0 · pnpm audit',
             payloadOrSchema: 'docs/sbom-cyclonedx.json | source-headers.mjs | pof:check',
             responsibilities:
-              'Verifies SPDX headers, CycloneDX SBOM freshness, CodeQL scans, production dependency audits, and template schemas.',
+              'Check, CodeQL, docs:build, and template validation run inside lattice-dx, lattice-docs, and lattice-templates guided by .github governance policies.',
           },
     },
     {
@@ -282,7 +282,7 @@ const repoNodes = computed<DiagramNode[]>(() => {
             protocol: 'HTTPS · MQTT · NGSI-LD · OTLP',
             payloadOrSchema: 'edge | app | data | scanner | iiot-net',
             responsibilities:
-              'Vận hành toàn bộ 6 mặt phẳng DX-OS với mật khẩu và digest ghim cứng, cơ sở dữ liệu phân quyền tối thiểu và sao lưu WAL.',
+              'Vận hành toàn bộ 4 tầng DX-OS với mật khẩu và digest ghim cứng, cơ sở dữ liệu phân quyền tối thiểu và sao lưu WAL.',
           }
         : {
             role: 'Production Runtime with 5 Segmented Networks',
@@ -290,7 +290,7 @@ const repoNodes = computed<DiagramNode[]>(() => {
             protocol: 'HTTPS · MQTT · NGSI-LD · OTLP',
             payloadOrSchema: 'edge | app | data | scanner | iiot-net',
             responsibilities:
-              'Operates all 6 DX-OS planes with digest-pinned containers, non-superuser PostgreSQL roles, and WAL archiving.',
+              'Operates all 4 DX-OS tiers with digest-pinned containers, non-superuser PostgreSQL roles, and WAL archiving.',
           },
     },
     {
@@ -644,10 +644,10 @@ const gitopsNodes = computed<DiagramNode[]>(() => {
     },
     {
       id: 'g-import',
-      title: isVi ? 'Nhập Dry-Run' : 'Studio Dry-Run',
-      sub: 'dxosStudio:solutionBundleImport',
+      title: isVi ? 'Nhập Bundle v3' : 'Studio Importer',
+      sub: 'solutionBundleImport',
       icon: 'workflow',
-      x: 624,
+      x: 332,
       y: 204,
       width: 216,
       height: 64,
@@ -655,28 +655,28 @@ const gitopsNodes = computed<DiagramNode[]>(() => {
       focal: true,
       inspector: isVi
         ? {
-            role: 'Bộ nạp kiểm tra và loại bỏ khóa nhạy cảm',
+            role: 'Bộ nạp kiểm tra, chụp snapshot & áp dụng Bundle v3',
             packageOrPort: '@latticedx/plugin-dxos-studio · solution-bundle.js',
             protocol: 'POST /api/dxosStudio:solutionBundleImport',
-            payloadOrSchema: 'dryRun: true (default) | solutionBundleDiff',
+            payloadOrSchema: 'dryRun: true | dryRun: false · solutionBundleDiff',
             responsibilities:
-              'Tự động loại bỏ khóa bí mật (SECRET_KEY_RE), chặn quyền root/ldx_admin và mô phỏng diff trước khi ghi vào DB.',
+              'Loại bỏ khóa bí mật (SECRET_KEY_RE), lưu/khôi phục snapshot hai chiều với PG16 latticeUiSnapshots và áp dụng trực tiếp vào Cổng & Luồng.',
           }
         : {
-            role: 'Sanitized Import & Diff Validation Engine',
+            role: 'Sanitized Import, Snapshot Guard & Bundle Apply Engine',
             packageOrPort: '@latticedx/plugin-dxos-studio · solution-bundle.js',
             protocol: 'POST /api/dxosStudio:solutionBundleImport',
-            payloadOrSchema: 'dryRun: true (default) | solutionBundleDiff',
+            payloadOrSchema: 'dryRun: true | dryRun: false · solutionBundleDiff',
             responsibilities:
-              'Strips secret keys, blocks privileged role escalation, and computes an exact dry-run diff before applying changes.',
+              'Strips secret keys, exchanges snapshots bidirectionally with PG16 latticeUiSnapshots, and applies validated portals and flows directly.',
           },
     },
     {
       id: 'g-snapshot',
       title: isVi ? 'Ảnh chụp Khôi phục' : 'UI Snapshot Guard',
-      sub: 'latticeUiSnapshots',
+      sub: 'PG16 latticeUiSnapshots',
       icon: 'lock',
-      x: 332,
+      x: 624,
       y: 204,
       width: 216,
       height: 64,
@@ -684,19 +684,19 @@ const gitopsNodes = computed<DiagramNode[]>(() => {
       inspector: isVi
         ? {
             role: 'Điểm khôi phục nguyên tử trước khi áp dụng gói',
-            packageOrPort: 'latticeUiSnapshots · __gitops_bundle__',
+            packageOrPort: 'PG16 · latticeUiSnapshots (__gitops_bundle__)',
             protocol: 'POST /api/dxosStudio:solutionBundleRollback',
-            payloadOrSchema: 'portalSlug: __gitops_bundle__ · FORCE RLS',
+            payloadOrSchema: 'Snapshot <-> Rollback · FORCE RLS',
             responsibilities:
-              'Chụp trạng thái trước khi nhập gói để có thể hoàn tác toàn bộ cổng, khối, bảng và quy trình về phiên bản cũ.',
+              'Chụp trạng thái trước khi nhập gói và hoàn tác trực tiếp qua Studio Importer khi cần khôi phục.',
           }
         : {
             role: 'Atomic Pre-Import Snapshot & Rollback Store',
-            packageOrPort: 'latticeUiSnapshots · __gitops_bundle__',
+            packageOrPort: 'PG16 · latticeUiSnapshots (__gitops_bundle__)',
             protocol: 'POST /api/dxosStudio:solutionBundleRollback',
-            payloadOrSchema: 'portalSlug: __gitops_bundle__ · FORCE RLS',
+            payloadOrSchema: 'Snapshot <-> Rollback · FORCE RLS',
             responsibilities:
-              'Captures pre-import portal and schema state so operators can revert newly created or modified artifacts atomically.',
+              'Captures pre-import state and enables atomic rollback through Studio Importer without writing directly to runtime portals.',
           },
     },
     {
@@ -716,7 +716,7 @@ const gitopsNodes = computed<DiagramNode[]>(() => {
             protocol: 'HTTPS · CloudEvents 1.0 · FEEL DMN',
             payloadOrSchema: 'latticeCustom* | latticeDecisionTables | latticeAutomationRules',
             responsibilities:
-              'Kích hoạt các cổng /p/*, bảng tùy chỉnh có FORCE RLS, luật DMN và luồng LatticeFlow v2 ngay sau khi áp dụng gói.',
+              'Kích hoạt các cổng /p/*, bảng tùy chỉnh có FORCE RLS, luật DMN và luồng LatticeFlow v2 trực tiếp từ Studio Importer (dryRun: false).',
           }
         : {
             role: 'Active Multi-Portal Workspace & Automation Runtime',
@@ -724,7 +724,7 @@ const gitopsNodes = computed<DiagramNode[]>(() => {
             protocol: 'HTTPS · CloudEvents 1.0 · FEEL DMN',
             payloadOrSchema: 'latticeCustom* | latticeDecisionTables | latticeAutomationRules',
             responsibilities:
-              'Activates role portals, RLS-protected custom collections, DMN tables, and LatticeFlow v2 rules in the target tenant.',
+              'Activated directly by Studio Importer (dryRun: false) with role portals, RLS-protected tables, DMN rules, and LatticeFlow v2.',
           },
     },
   ];
@@ -761,29 +761,42 @@ const gitopsEdges = computed<DiagramEdge[]>(() => [
     kind: 'primary',
     points: [
       [732, 116],
-      [732, 204],
+      [732, 148],
+      [440, 148],
+      [440, 204],
     ],
   },
   {
     id: 'ge-4',
     from: 'g-import',
-    to: 'g-snapshot',
-    label: 'Snapshot',
-    kind: 'primary',
-    points: [
-      [624, 236],
-      [548, 236],
-    ],
-  },
-  {
-    id: 'ge-5',
-    from: 'g-snapshot',
     to: 'g-live',
     label: 'Apply',
     kind: 'primary',
     points: [
       [332, 236],
       [256, 236],
+    ],
+  },
+  {
+    id: 'ge-5',
+    from: 'g-import',
+    to: 'g-snapshot',
+    label: 'Snapshot',
+    kind: 'flow',
+    points: [
+      [548, 222],
+      [624, 222],
+    ],
+  },
+  {
+    id: 'ge-6',
+    from: 'g-snapshot',
+    to: 'g-import',
+    label: 'Rollback',
+    kind: 'dashed',
+    points: [
+      [624, 250],
+      [548, 250],
     ],
   },
 ]);
@@ -803,23 +816,23 @@ const gitopsSteps = computed<DiagramStep[]>(() =>
         },
         {
           id: 'gs-2',
-          title: 'Dry-Run & Chụp Ảnh khôi phục',
+          title: 'Dry-Run & Chụp/Khôi phục Snapshot PG16',
           activeNodes: ['g-bundle', 'g-import', 'g-snapshot'],
-          activeEdges: ['ge-3', 'ge-4'],
+          activeEdges: ['ge-3', 'ge-5', 'ge-6'],
           description:
-            'dxosStudio:solutionBundleImport mặc định chạy dryRun: true, loại bỏ khóa bí mật và lưu bản chụp vào latticeUiSnapshots trước khi ghi.',
-          route: 'POST /api/dxosStudio:solutionBundleImport',
-          payload: '{ "dryRun": true, "bundle": { "metadata": { "schemaVersion": "latticedx.solution-bundle/v3" } } }',
-          chips: ['dryRun: true', 'Sanitized', 'Rollback Ready'],
+            'dxosStudio:solutionBundleImport mặc định chạy dryRun: true, lưu và hỗ trợ khôi phục hai chiều với PG16 latticeUiSnapshots trước hoặc sau khi ghi.',
+          route: 'POST /api/dxosStudio:solutionBundleImport (dryRun: true)',
+          payload: 'latticeUiSnapshots <-> solutionBundleRollback',
+          chips: ['dryRun: true', 'Snapshot / Rollback'],
         },
         {
           id: 'gs-3',
-          title: 'Kích hoạt Cổng & Bảng FORCE RLS',
-          activeNodes: ['g-snapshot', 'g-live'],
-          activeEdges: ['ge-5'],
+          title: 'Áp dụng Trực tiếp Cổng & Luồng (dryRun: false)',
+          activeNodes: ['g-import', 'g-live'],
+          activeEdges: ['ge-4'],
           description:
-            'Các cổng /p/*, bảng latticeCustom* có FORCE RLS, luật DMN và quy trình LatticeFlow v2 được kích hoạt đồng bộ cho tenant.',
-          route: 'POST /api/dxosStudio:solutionBundleRollback',
+            'Studio Importer áp dụng trực tiếp gói v3 vào các cổng /p/*, bảng latticeCustom* có FORCE RLS, luật DMN và quy trình LatticeFlow v2.',
+          route: 'POST /api/dxosStudio:solutionBundleImport (dryRun: false)',
           chips: ['FORCE RLS', 'DMN + Flow v2', 'Zero Downtime'],
         },
       ]
@@ -836,23 +849,23 @@ const gitopsSteps = computed<DiagramStep[]>(() =>
         },
         {
           id: 'gs-2',
-          title: 'Sanitized Dry-Run & Snapshot Capture',
+          title: 'Dry-Run & Bidirectional PG16 Snapshot/Rollback',
           activeNodes: ['g-bundle', 'g-import', 'g-snapshot'],
-          activeEdges: ['ge-3', 'ge-4'],
+          activeEdges: ['ge-3', 'ge-5', 'ge-6'],
           description:
-            'dxosStudio:solutionBundleImport defaults to dryRun: true, strips sensitive keys, and saves a pre-import snapshot in latticeUiSnapshots.',
-          route: 'POST /api/dxosStudio:solutionBundleImport',
-          payload: '{ "dryRun": true, "bundle": { "metadata": { "schemaVersion": "latticedx.solution-bundle/v3" } } }',
-          chips: ['dryRun: true', 'Sanitized', 'Rollback Ready'],
+            'dxosStudio:solutionBundleImport defaults to dryRun: true and maintains bidirectional Snapshot / Rollback state with PG16 latticeUiSnapshots.',
+          route: 'POST /api/dxosStudio:solutionBundleImport (dryRun: true)',
+          payload: 'latticeUiSnapshots <-> solutionBundleRollback',
+          chips: ['dryRun: true', 'Snapshot / Rollback'],
         },
         {
           id: 'gs-3',
-          title: 'Activate Tenant Portals & Automations',
-          activeNodes: ['g-snapshot', 'g-live'],
-          activeEdges: ['ge-5'],
+          title: 'Apply Tenant Portals & Automations (dryRun: false)',
+          activeNodes: ['g-import', 'g-live'],
+          activeEdges: ['ge-4'],
           description:
-            'Role portals, RLS-protected custom collections, DMN tables, and LatticeFlow v2 rules become active with atomic rollback support.',
-          route: 'POST /api/dxosStudio:solutionBundleRollback',
+            'Studio Importer applies Bundle v3 directly to role portals, RLS-protected custom collections, DMN tables, and LatticeFlow v2 rules.',
+          route: 'POST /api/dxosStudio:solutionBundleImport (dryRun: false)',
           chips: ['FORCE RLS', 'DMN + Flow v2', 'Zero Downtime'],
         },
       ],

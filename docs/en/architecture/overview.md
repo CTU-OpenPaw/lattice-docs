@@ -1,38 +1,48 @@
 ---
-title: 6-Plane DX-OS Architecture Overview
-description: Six coordinated orchestration planes, five isolated Docker network zones, Compose profiles, and the four-repository Apache-2.0 ecosystem of LatticeDX v0.4.2.
+title: Platform Architecture Overview (v0.4.2)
+description: Four-tier platform architecture, five canonical interaction patterns, five isolated Docker network zones, Compose profiles, and the four-repository Apache-2.0 ecosystem of LatticeDX v0.4.2.
 ---
 
-# 6-Plane DX-OS Architecture Overview
+# Platform Architecture Overview (v0.4.2)
 
-LatticeDX `v0.4.2` organizes enterprise operations into a **6-Plane DX-OS** model backed by **five isolated container network zones**. This separation isolates the HTTP/TLS zero-trust edge, application and workflow orchestration, IT/OT digital-twin pipelines, the agentic AI workforce, and the PostgreSQL `16` persistence layer protected by `FORCE ROW LEVEL SECURITY`.
+LatticeDX `v0.4.2` organizes enterprise operations into a **4-tier platform architecture** (**Tier 3 Pluggable Business Applications** -> **Tier 2 User & Configuration Experience** -> **Tier 1 Headless Runtime & Shared Services** -> **Service-owned Data**) paired with **five canonical interaction patterns** and **five isolated container network zones**. This separation isolates pluggable domain apps, role-scoped workspaces, the external `nocobase/nocobase:2.2.50` host with `7` Apache-2.0 plugins, IT/OT digital-twin pipelines, governed AI agents, and PostgreSQL `16` storage protected by `FORCE ROW LEVEL SECURITY`.
+
+<figure class="ldx-arch-figure">
+
+![LatticeDX v0.4.2 Platform Architecture — 4 tiers, 5 interaction patterns, and cross-cutting operations](/images/architecture-v042-en.webp)
+
+<figcaption><strong>LatticeDX <code>v0.4.2</code> Platform Architecture:</strong> four architectural tiers (Tier 3 Pluggable Business Applications, Tier 2 User &amp; Configuration Experience, Tier 1 Headless Runtime &amp; Shared Services across 5 horizontal bands, Service-owned Data), 5 Platform Interaction Patterns, and Cross-cutting Operations.</figcaption>
+</figure>
 
 <PlatformPlanesDiagram />
 
-## The 6 Coordinated Planes (Planes 1–6)
+## The 4-Tier Stack & Shared Services
 
-Each plane owns a distinct operational boundary and communicates with neighboring planes through versioned REST/RPC contracts, transactional outboxes, or typed event buses.
+Each tier owns a distinct operational boundary. Every domain mutation enters through governed Tier 1 API contracts and `FORCE RLS` policies rather than bypassing directly into internal database tables.
 
-| Plane | Architectural Scope | Core Services & Modules | Primary Routes & Endpoints |
+| Tier / Band | Architectural Scope | Core Services & Modules | Primary Routes & Endpoints |
 | :--- | :--- | :--- | :--- |
-| **Plane 1** | Identity, Zero-Trust Edge & Multi-Tenant Persistence | Caddy `2.10`, Apache APISIX `3.19.0`, Keycloak `26.8.2` (OIDC/PKCE S256), Valkey `8.1`, `@latticedx/plugin-enterprise-auth`, scoped PaaS API keys (`ldx_pat_*`), Ed25519/Merkle PKI ledger (`dxosLedger`), `file-scanner` + ClamAV `1.5.5` + RustFS `1.0.6`, AES-256-GCM vault (`dxosVault`), 56 static `FORCE RLS` tables under `nocobase_app` | `/enterprise-login`, `/api/dxosApiKeys:*`, `/api/dxosLedger:*`, `/api/dxosVault:*`, `/api/dxosDataGov:*` |
-| **Plane 2** | IT/OT Digital Twin & Time-Series Telemetry | Eclipse Mosquitto `2.0.21` Dynamic Security (`allow_anonymous false`, `$CONTROL/dynamic-security/v1`, LWT `device.offline`), Node-RED `4.0.9` downlink, FIWARE Orion-LD `1.12.0` + MongoDB `8.0`, `latticeTelemetryPoints`, `latticeTwinShadows`, Arrhenius MKT engine, `2.0°C` HITL setpoint threshold | `/api/dxosBroker:*`, `/api/dxosBroker:orionNotify`, `/api/dxosBlocks:twin*`, `/api/dxosBlocks:telemetry*`, `/api/dxosBlocks:alarm*` |
-| **Plane 3** | Unified Event Bus, LatticeFlow v2, Approvals & Stock `n8n` | `dxosEvents` (CloudEvents `1.0`, Standard Webhooks `whsec_`, PostgreSQL outbox `FOR UPDATE SKIP LOCKED`, `5`-failure/`120s` circuit breaker, DLQ), LatticeFlow v2 DAG (`dxosAutomations`: 24 nodes across 6 groups, `loopCursor`, HITL pause/resume), `dxosApprovals` (`M-of-N` + `dxosDelegations`), `dxosNotify`, Visual DMN (`dxosDmn`), OMS/WMS/FEFO/ePOD (`dxosWms`), optional Stock `n8n` `2.48.1` (`dxosN8n`) | `/admin/settings/workflow/automation`, `/api/dxosEvents:*`, `/api/dxosAutomations:*`, `/api/dxosApprovals:*`, `/api/dxosDmn:*`, `/api/dxosWms:*`, `/v/track/:code`, `/api/dxosN8n:*` |
-| **Plane 4** | Multi-Portal, Field PWA, Public Forms & GitOps v3 | Role-scoped portals `/p/*` (`procurement`, `incidents`, `logistics`, `services`, `cmms`, `partner-claims`), Mobile Field PWA (`/v/mobile` with IndexedDB outbox and `quarantined` state), zero-PII Public Forms (`/v/form/:slug`), 12 Native v2 `BlockModel`s (`maplibre-gl`, WebGIS, BI Chart, WMS Ops, Creative Studio), `dxosBuilder` for `latticeCustom*`, P.A.R.A. + OCR + Hybrid RAG (`pgvector` `0.8.1` HNSW + RRF), Solution Bundle `v3` | `/p/<slug>`, `/v/mobile`, `/v/form/:slug`, `/admin/settings/dxos-studio`, `/admin/settings/dxos-para`, `/api/dxosBlocks:*`, `/api/latticePara:*`, `/api/dxosBuilder:*` |
-| **Plane 5** | AI Workforce, App Builder 2.0, MCP & A2A | 7 Starter AI Profiles (`dxos-coordinator` through `dxos-analyst`), 20 Unified Tools + 4 IT/OT MCP Tools, App Builder 2.0 (`plan`, `build`, `patch`, `rollback`, safe `teardown`), Streamable HTTP MCP (`/api/dxos-mcp`, `/api/dxos-mcp/it-ot`), Google/LF A2A (`/.well-known/agent-card.json`, `/api/dxos-a2a`), Eval Lab, Vietnamese PII redaction, PostgreSQL token/USD quotas | `/admin/settings/dxos-ai`, `/.well-known/agent-card.json`, `/api/dxos-a2a`, `/api/dxos-mcp`, `/api/dxos-mcp/it-ot`, `/api/dxosAi:*` |
-| **Plane 6** | Application Runtime, OTel Observability & PITR | External `nocobase/nocobase:2.2.50` OCI host loading 7 Apache-2.0 plugins (`sdkProvidedByHost: true`), Fastify `5` (`/v1/*`), live OpenAPI `3.1.0` & AsyncAPI `3.0.0` specs, OTel Collector Contrib `0.123.0` (W3C `traceparent` + OTel GenAI spans), Prometheus `v3.3.0`, Grafana OSS `11.5.8`, Gotenberg `8.20.1` (`pdf`), PostgreSQL PITR WAL `.gz` archiving | `/api/dxos:health`, `/api/dxos:metrics`, `/api/dxos:openapi`, `/api/dxos:asyncapi`, `/v1/*` |
+| **Tier 3 · Pluggable Business Applications** | Domain & AI-built solutions | **Cold-Chain Logistics & WMS** (`dxosWms`: orders, FEFO lots, Arrhenius MKT & ePOD), **IIoT Incidents & Digital Twin** (telemetry, WebGIS & 2-way control), **CMMS & Partner Claims** (maintenance, SLA & claims), **Procurement, ITSM & AI-Built Apps** (`latticeCustom*`) | `/p/logistics`, `/p/incidents`, `/p/cmms`, `/p/partner-claims`, `/p/procurement`, `/p/services`, `/v/track/:code` |
+| **Tier 2 · User & Configuration Experience** | Views sharing one frontend | **Role Workspaces** (`/p/*`, Mobile Field PWA `/v/mobile` with IndexedDB outbox + `quarantined`, zero-PII Public `/v/form/:slug`), **NocoBase & Control Studio**, **Data, BI & WebGIS Views** (`12` Native v2 `BlockModel`s including `maplibre-gl`, BI, WMS Ops), **AI Studio & HITL Views** | `/p/<slug>`, `/v/mobile`, `/v/form/:slug`, `/admin/settings/dxos-studio`, `/admin/settings/dxos-ai` |
+| **Tier 1 · Access & Identity** | Secure access & Zero-Trust edge | **Keycloak `26.8.2`** (OIDC + PKCE `S256`), **Caddy `2.10` & Apache APISIX `3.19.0` Gateway** (TLS `1.3`, HSTS, `-Server`, `X-Request-Id`, Valkey `limit-count`), `@latticedx/plugin-enterprise-auth` | `/enterprise-login`, `/api/enterpriseAuth:*` |
+| **Tier 1 · Application Runtime** | Application backend & domain logic | **External `nocobase/nocobase:2.2.50` Host** loading `7` Apache-2.0 plugins (`sdkProvidedByHost: true`, mounted `:ro`), **Fastify `5` Domain Services** (`/v1/*` & specialized business logic) | `/api/dxos:health`, `/api/dxos:openapi`, `/api/dxos:asyncapi`, `/v1/*` |
+| **Tier 1 · Team-owned Platform Core** | Core services owned by the team | **App Registry & Bundle v3** (`dxosBuilder` for `latticeCustom*`), **Adapters & API Contracts** (OpenAPI `3.1.0`, AsyncAPI `3.0.0`, AES-256-GCM Vault `dxosVault`), **Shared Policies** (`56` static `FORCE RLS` tables under `nocobase_app` + `ldx_pat_*` scopes), **Outbox & Event Coordination** (`dxosEvents`: CloudEvents `1.0`, Standard Webhooks `whsec_`, `FOR UPDATE SKIP LOCKED`, `5`-failure/`120s` circuit breaker, DLQ) | `/api/dxosApiKeys:*`, `/api/dxosVault:*`, `/api/dxosEvents:*`, `/api/dxosBuilder:*`, `/api/dxosDataGov:*` |
+| **Tier 1 · Automation & Context** | Workflows, integrations & IIoT context | **LatticeFlow v2 & Approvals** (`dxosAutomations`: `24` nodes across `6` groups, `loopCursor`, `dxosApprovals` `M-of-N` + `dxosDelegations`, `dxosNotify`), **Visual DMN Rules** (`dxosDmn` FEEL), **Stock `n8n` `2.48.1`** (external integrations via REST v1 & OAuth2 PKCE), **NGSI-LD Broker & MQTT** (FIWARE Orion-LD `1.12.0`, Eclipse Mosquitto `2.0.21` DynSec, Node-RED `4.0.9`, `2.0°C` HITL guard) | `/admin/settings/workflow/automation`, `/api/dxosAutomations:*`, `/api/dxosApprovals:*`, `/api/dxosDmn:*`, `/api/dxosN8n:*`, `/api/dxosBroker:*` |
+| **Tier 1 · Agent Services** | AI workforce & app building | **Business Agents & P.A.R.A. RAG** (`7` Profiles `dxos-coordinator`..`dxos-analyst`, `20` Unified Tools + `4` IT/OT MCP Tools, `/api/dxos-mcp`, `/api/dxos-a2a`, `/.well-known/agent-card.json`, Vietnamese PII redaction, PostgreSQL quotas, Hybrid RAG HNSW + RRF), **Application Builder 2.0** (Isolated Schema/ER Plan-Diff, Preview & Safe Rollback) | `/api/dxos-mcp`, `/api/dxos-mcp/it-ot`, `/api/dxos-a2a`, `/api/dxosAi:*`, `/api/latticePara:*` |
+| **Service-owned Data** | Governed persistence & ledger | **PostgreSQL `16` + `pgvector` `0.8.1`** (`56` `FORCE RLS` tables & HNSW vectors), **RustFS `1.0.6` Object Storage**, **Orion-LD + MongoDB `8.0` & Valkey `8.1`**, **Ed25519 + Merkle Ledger** (`dxosLedger`) | `/api/dxosLedger:*`, `/api/dxosBlocks:*` |
+| **Cross-cutting Operations** | Observability, secrets, scanning & DR | **OTel Collector `0.123.0` + Prometheus `v3.3.0` + Grafana `11.5.8`** (W3C `traceparent` + OTel GenAI), **Vault & RBAC**, **File Quarantine & Scanning** (`file-scanner` + ClamAV `1.5.5`), **Gotenberg `8.20.1`** (`pdf`), **PITR WAL `.gz` Backups**, **Bundle v3 & CycloneDX SBOM** | `/api/dxos:metrics` |
 
-## Five Cross-Plane Interaction Flows
+## Five Platform Interaction Patterns (1–5)
 
-Every operational workflow traverses a fixed sequence of verified boundaries rather than bypassing directly into internal tables or downstream engines:
+Every operational workflow follows one of five end-to-end technical patterns, ensuring every state transition passes through authorized service boundaries and audit logging:
 
-| Flow | Cross-Plane Execution Chain |
+| Pattern | End-to-End Execution Path |
 | :---: | :--- |
-| `1` | **Zero-Trust Edge & OIDC Session:** requests enter through Caddy `2.10` (TLS termination, `Strict-Transport-Security`, `-Server` header) to Apache APISIX `3.19.0` (`X-Request-Id`, Valkey-backed `limit-count`) and authenticate via Keycloak `26.8.2` (`PKCE S256`) or `ldx_pat_*` API keys before `latticeNativeScope` opens a PostgreSQL transaction bound to `app.current_org`. |
-| `2` | **Public Zero-PII & Offline Field PWA:** `/v/form/*`, `/v/track/*`, and `/v/mobile` are served through `10-lattice-public-routes.sh` with per-response cryptographic nonce CSP headers (`default-src 'none'; script-src 'nonce-<n>'`). Field workers queue mutations inside IndexedDB `latticedx-mobile-outbox` and quarantine `4xx` conflicts under `quarantined`. |
-| `3` | **Bidirectional IIoT Digital Twin:** edge sensors publish to Eclipse Mosquitto `2.0.21` (DynSec/LWT), Node-RED `4.0.9` normalizes telemetry to `dxosBlocks:telemetryIngest`, writes persist to `latticeTelemetryPoints`, and `latticeContextOutbox` drains NGSI-LD state to FIWARE Orion-LD `1.12.0`. Downlink commands from WebGIS or AI agents enforce a `2.0°C` HITL delta threshold before reaching Node-RED. |
-| `4` | **Durable Event Bus & Stock `n8n`:** domain mutations enqueue CloudEvents `1.0` records into `latticeEventBus`, where a `10s` drainer signs Standard Webhooks (`webhook-id`, `webhook-timestamp`, `webhook-signature: v1,<b64>`) toward external receivers or Stock `n8n` `2.48.1`, opening a `120s` circuit breaker after `5` consecutive endpoint failures. |
-| `5` | **Agentic AI, MCP & OTel GenAI Telemetry:** calls arriving via Studio AI, `/api/dxos-mcp`, or `/api/dxos-a2a` run inside `createAuditedTool` for RBAC checks, Vietnamese PII redaction, PostgreSQL quota accounting, and OTel GenAI span export (`gen_ai.system`, `gen_ai.request.model`) to `otel-collector:4318`. |
+| `1` | **Application request:** `User / Workspace` -> `Caddy 2.10 + APISIX 3.19.0 Gateway` (TLS termination, `X-Request-Id`, Valkey `limit-count`) -> `NocoBase / Domain API` (`Keycloak` OIDC PKCE `S256` or `ldx_pat_*`) -> `PostgreSQL 16 FORCE RLS` (`latticeNativeScope` binding `app.current_org` under `nocobase_app`). |
+| `2` | **External integration:** `External System` -> `Protected Webhook (HMAC Standard Webhooks whsec_)` -> `Event Bus (latticeEventBus, FOR UPDATE SKIP LOCKED, 5-failure/120s circuit breaker) / n8n 2.48.1 Adapter` -> `Authorized Service API (ldx_pat_*)`. |
+| `3` | **Context-driven automation:** `Mosquitto 2.0.21 (DynSec/LWT) -> Node-RED 4.0.9` -> `NocoBase MKT & Outbox` -> `NGSI-LD Broker (FIWARE Orion-LD 1.12.0)` --*(Change notification / dashed)*--> `Visual DMN & MKT Rules` -> `LatticeFlow v2 / Task` (enforcing the `2.0°C` HITL guard on bidirectional downlink commands). |
+| `4` | **Business agent:** `User / Workflow / MCP / A2A` -> `Business Agent + P.A.R.A. Hybrid RAG (pgvector HNSW + RRF)` -> `20 Scoped Tools (createAuditedTool: Vietnamese PII redaction, PostgreSQL quotas, OTel GenAI spans)` -> `Authorized Service APIs (HITL on sensitive mutations)`. |
+| `5` | **Application builder:** `Builder · App Builder 2.0` -> `Isolated Plan & ER Diff` (dry-run `latticeCustom*` schema diff) -> `Validate & Preview` -> `Human Approval` -> `Publish Bundle v3 / Safe Rollback` (never writes directly to production DB). |
 
 ## Five Isolated Production Network Zones (`prod.yml`)
 
@@ -104,7 +114,7 @@ The platform is maintained across four independent Pure-OSI repositories (`Apach
 
 ## Live Specifications & Runtime Health
 
-Plane 6 exposes unauthenticated health checks (or token-guarded metrics) and dynamically generated API specifications that include runtime `latticeCustom*` collections alongside core platform resources.
+The Application Runtime & Cross-cutting Operations layer exposes unauthenticated health checks (or token-guarded metrics) and dynamically generated API specifications that include runtime `latticeCustom*` collections alongside core platform resources.
 
 <ApiEndpoint
   method="GET"
@@ -124,7 +134,7 @@ Plane 6 exposes unauthenticated health checks (or token-guarded metrics) and dyn
   method="GET"
   path="/api/dxos:metrics"
   auth="Bearer DX_METRICS_TOKEN | root | ldx_admin"
-  summary="Exports 12 Prometheus metric families covering HTTP latency, RLS errors, outbox backlog/DLQ, AI tokens, and SSE listeners."
+  summary="Exports 16 Prometheus metric families covering HTTP latency, RLS errors, outbox backlog/DLQ, AI tokens, and SSE listeners."
 />
 
 <CodeTabs
@@ -137,7 +147,7 @@ Plane 6 exposes unauthenticated health checks (or token-guarded metrics) and dyn
     {
       label: 'Prometheus Metrics (bash)',
       lang: 'bash',
-      code: '# Scrape 12 Prometheus metric families via DX_METRICS_TOKEN\ncurl -fsS -H \x22Authorization: Bearer $DX_METRICS_TOKEN\x22 \\\n  http://127.0.0.1:8080/api/dxos:metrics'
+      code: '# Scrape 16 Prometheus metric families via DX_METRICS_TOKEN\ncurl -fsS -H \x22Authorization: Bearer $DX_METRICS_TOKEN\x22 \\\n  http://127.0.0.1:8080/api/dxos:metrics'
     },
     {
       label: 'AsyncAPI 3.0 Topology (json)',

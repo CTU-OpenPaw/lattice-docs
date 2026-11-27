@@ -176,7 +176,7 @@ export default defineConfig({
             text: '2. Kiến trúc cốt lõi',
             collapsed: false,
             items: [
-              { text: 'Tổng quan 6-Plane DX-OS', link: '/architecture/overview' },
+              { text: 'Tổng quan Kiến trúc 4 Tầng', link: '/architecture/overview' },
               { text: 'Hệ thống 7 Plugin Apache-2.0', link: '/architecture/plugin-system' },
               { text: 'Đa tenant & PostgreSQL FORCE RLS', link: '/architecture/multi-tenancy-rls' },
               { text: 'Mô hình dữ liệu & Công thức AST', link: '/architecture/data-model' },
@@ -340,7 +340,7 @@ export default defineConfig({
             text: '2. Core Architecture & Concepts',
             collapsed: false,
             items: [
-              { text: '6-Plane Overview', link: '/en/architecture/overview' },
+              { text: '4-Tier Architecture Overview', link: '/en/architecture/overview' },
               { text: 'Plugin System', link: '/en/architecture/plugin-system' },
               { text: 'Multi-Tenancy & FORCE RLS', link: '/en/architecture/multi-tenancy-rls' },
               { text: 'Data Model & AST Formulas', link: '/en/architecture/data-model' },

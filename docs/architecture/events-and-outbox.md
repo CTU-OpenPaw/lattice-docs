@@ -46,7 +46,7 @@ ce-specversion: 1.0`,
 
 LatticeDX tách bạch hoàn toàn cơ chế lưu trữ bền vững và đẩy sự kiện thời gian thực: mọi sự kiện nghiệp vụ và đồng bộ bản sao số đều được ghi nguyên tử vào các bảng outbox trên PostgreSQL 16 với khóa `FOR UPDATE SKIP LOCKED`, trong khi Valkey 8.1 chỉ đảm nhiệm cache (DB 0), PubSub SSE cập nhật giao diện (DB 1) và trạng thái phiên OIDC (DB 2). Hệ thống **không sử dụng Valkey Streams** cho hàng đợi outbox.
 
-## Chuẩn CloudEvents 1.0 và `dxosEventBus`
+## Chuẩn CloudEvents 1.0 và `dxosEvents`
 
 Module `plugins/nocobase/plugin-lattice-foundation/src/server/event-bus.js` chuẩn hóa mọi sự kiện phát sinh trong hệ thống theo đặc tả **CloudEvents 1.0**. Khi hàm `publishDomainEvent` chạy bên trong một transaction nghiệp vụ, bản ghi sự kiện được chèn vào `latticeEventBus` và đồng thời tạo các tác vụ giao hàng trong `latticeWebhookDeliveries` cho mọi thuê bao đang bật khớp mẫu `eventPattern`.
 
@@ -95,7 +95,7 @@ Cơ chế phục hồi lỗi và ngắt mạch được kiểm soát qua bốn q
 | Cơ chế | Ngưỡng & Công thức | Hành vi hệ thống |
 | :--- | :--- | :--- |
 | Thử lại theo hàm mũ | `min(3600000, 5000 * 2^attempt) + jitter` | Áp dụng khi timeout (`WEBHOOK_TIMEOUT_MS = 5000`ms) hoặc mã HTTP ngoài `2xx`; `jitter` tối đa `25%` và trần `5000`ms. |
-| Chuyển vào DLQ | `DEFAULT_MAX_ATTEMPTS = 5` | Hết số lần thử tối đa, bản ghi chuyển sang trạng thái `'dlq'` để vận hành viên phát lại qua `dxosEventBus:replayDlq`. |
+| Chuyển vào DLQ | `DEFAULT_MAX_ATTEMPTS = 5` | Hết số lần thử tối đa, bản ghi chuyển sang trạng thái `'dlq'` để vận hành viên phát lại qua `dxosEvents:replayDlq`. |
 | Ngắt mạch thuê bao | `CIRCUIT_FAILURE_THRESHOLD = 5`, `CIRCUIT_COOLDOWN_MS = 120000` | Đạt 5 lỗi liên tiếp sẽ mở mạch trong 2 phút (`'open'`); hết thời gian chờ chuyển sang thăm dò `'half_open'`. |
 | Kiểm soát SSRF | `assertSafeConnectorUrlAsync` | Phân giải DNS trước khi gọi `fetch`, chặn dải loopback, IP riêng tư và địa chỉ metadata nếu không có trong danh sách cho phép. |
 

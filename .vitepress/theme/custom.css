@@ -152,6 +152,35 @@
   max-width: 72ch;
 }
 
+.vp-doc figure.ldx-arch-figure {
+  margin: 1.5rem 0;
+  padding: 12px;
+  border: 1px solid var(--ldx-border);
+  border-radius: 8px;
+  background-color: var(--ldx-surface);
+}
+
+.vp-doc figure.ldx-arch-figure p {
+  margin: 0;
+  max-width: 100%;
+}
+
+.vp-doc figure.ldx-arch-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.vp-doc figure.ldx-arch-figure figcaption {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ldx-border);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--ldx-muted);
+}
+
 .vp-doc a {
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
@@ -175,13 +204,20 @@
   color: var(--ldx-ink);
   font-weight: 600;
   text-align: left;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
+  vertical-align: bottom;
 }
 
 .vp-doc th,
 .vp-doc td {
   border: 1px solid var(--ldx-border);
   padding: 0.625rem 0.875rem;
+}
+
+.vp-doc table:has(th:nth-child(5)) th,
+.vp-doc table:has(th:nth-child(5)) td {
+  padding: 0.5rem 0.625rem;
 }
 
 .vp-doc td {
@@ -204,6 +240,18 @@
   border-radius: 4px;
   border: 1px solid var(--ldx-border);
   background-color: var(--ldx-surface-alt);
+}
+
+.vp-doc .ldx-diagram .ldx-meta-chip {
+  transition: none;
+  color: var(--ldx-ink-2);
+  background-color: var(--ldx-surface-alt);
+  border-color: var(--ldx-border);
+}
+
+.vp-doc .ldx-diagram .ldx-meta-chip.is-flow {
+  color: var(--ldx-ink);
+  background-color: var(--ldx-flow-soft);
 }
 
 .vp-doc pre code {

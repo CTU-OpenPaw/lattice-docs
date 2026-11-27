@@ -47,7 +47,7 @@ const modes = computed<DiagramMode[]>(() => {
         label: isVi ? 'MẶT PHẲNG BIÊN & ĐỊNH DANH (EDGE + OIDC)' : 'EDGE & IDENTITY PLANE (CADDY / APISIX / KEYCLOAK)',
         x: 16,
         y: 16,
-        width: 888,
+        width: 928,
         height: 144,
         kind: 'admin',
       },
@@ -56,7 +56,7 @@ const modes = computed<DiagramMode[]>(() => {
         label: isVi ? 'VÙNG THỰC THI NOCOBASE & CÔ LẬP PG16 FORCE RLS' : 'NOCOBASE HOST & PG16 FORCE RLS ISOLATION ZONE',
         x: 16,
         y: 204,
-        width: 888,
+        width: 928,
         height: 224,
         kind: 'traffic',
       },
@@ -314,24 +314,24 @@ const modes = computed<DiagramMode[]>(() => {
     id: 'bypass-keys',
     label: isVi ? 'API Key ldx_pat_* & System Bypass' : 'ldx_pat_* Keys & System Bypass',
     summary: isVi
-      ? 'SHA-256 timingSafeEqual · SAVEPOINT ldx_sp_<n> · app.rls_bypass'
-      : 'SHA-256 timingSafeEqual · SAVEPOINT ldx_sp_<n> · app.rls_bypass',
+      ? 'PAT -> app.current_org (Tenant) vs System Worker -> app.rls_bypass=on (Tx nội bộ)'
+      : 'PAT -> app.current_org (Tenant) vs System Worker -> app.rls_bypass=on (Internal Tx)',
     zones: [
       {
         id: 'caller-zone',
-        label: isVi ? 'MẶT PHẲNG XÁC THỰC API KEY & TÁC VỤ HỆ THỐNG' : 'API KEY VERIFICATION & SYSTEM CALLER PLANE',
+        label: isVi ? 'XÁC THỰC API KEY (TENANT) VS TÁC VỤ HỆ THỐNG (INTERNAL TX)' : 'API KEY (TENANT-SCOPED) VS SYSTEM WORKER (INTERNAL TX ONLY)',
         x: 16,
         y: 16,
-        width: 888,
+        width: 928,
         height: 144,
         kind: 'admin',
       },
       {
         id: 'savepoint-zone',
-        label: isVi ? 'VÙNG SAVEPOINT & KIỂM SOÁT BYPASS CÓ PHẠM VI' : 'SAVEPOINT & SCOPED BYPASS ISOLATION ZONE',
+        label: isVi ? 'ALS TX & SAVEPOINT GUARD (RUNINRLSSAVEPOINT)' : 'ALS TX & SAVEPOINT GUARD (RUNINRLSSAVEPOINT)',
         x: 16,
         y: 204,
-        width: 888,
+        width: 928,
         height: 224,
         kind: 'traffic',
       },
@@ -342,9 +342,9 @@ const modes = computed<DiagramMode[]>(() => {
         title: 'API Client',
         sub: 'X-Lattice-API-Key',
         icon: 'terminal',
-        x: 36,
+        x: 28,
         y: 56,
-        width: 176,
+        width: 160,
         height: 64,
         zoneId: 'caller-zone',
         inspector: {
@@ -362,9 +362,9 @@ const modes = computed<DiagramMode[]>(() => {
         title: 'APISIX 3.19',
         sub: ':9080 · Limit-Count',
         icon: 'shield',
-        x: 268,
+        x: 260,
         y: 56,
-        width: 176,
+        width: 172,
         height: 64,
         zoneId: 'caller-zone',
         inspector: {
@@ -380,61 +380,61 @@ const modes = computed<DiagramMode[]>(() => {
       {
         id: 'pat_guard',
         title: 'PAT Verifier',
-        sub: 'SHA-256 · Clamp Role',
+        sub: 'app.current_org',
         icon: 'key',
         x: 500,
+        y: 56,
+        width: 180,
+        height: 64,
+        zoneId: 'caller-zone',
+        inspector: {
+          role: isVi ? 'Xác thực Khóa PaaS Phạm vi Tenant (Không Bypass)' : 'Tenant-Scoped PaaS Key Verifier (No Bypass)',
+          packageOrPort: 'paas-api-keys.js · latticeApiKeys',
+          protocol: 'SHA-256 · timingSafeEqualHex',
+          payloadOrSchema: "set_config('app.current_org', key.organizationId, true)",
+          responsibilities: isVi
+            ? 'Đối chiếu keyHash bằng timingSafeEqualHex, gắn app.current_org đúng tổ chức sở hữu khóa và dùng clampHeaderRole ngăn leo thang vai trò.'
+            : 'Verifies SHA-256 keyHash via timingSafeEqualHex, binds tenant-scoped app.current_org (never rls_bypass), and clamps role escalation.',
+        },
+      },
+      {
+        id: 'system_worker',
+        title: 'System Worker',
+        sub: 'app.rls_bypass=on',
+        icon: 'workflow',
+        x: 744,
         y: 56,
         width: 184,
         height: 64,
         zoneId: 'caller-zone',
         inspector: {
-          role: isVi ? 'Bộ kiểm tra Khóa PaaS' : 'Scoped PaaS Key Verifier',
-          packageOrPort: 'paas-api-keys.js · latticeApiKeys',
-          protocol: 'SHA-256 · timingSafeEqualHex',
-          payloadOrSchema: 'clampHeaderRole · expiresInDays 1..365',
-          responsibilities: isVi
-            ? 'Đối chiếu keyHash bằng timingSafeEqualHex, chặn truy vấn trực tiếp bảng latticeApiKeys và dùng clampHeaderRole ngăn leo thang vai trò.'
-            : 'Verifies SHA-256 keyHash via timingSafeEqualHex, blocks generic REST access to latticeApiKeys, and enforces clampHeaderRole against escalation.',
-        },
-      },
-      {
-        id: 'system_worker',
-        title: 'Outbox / Cron',
-        sub: 'withSystemRlsBypass',
-        icon: 'workflow',
-        x: 720,
-        y: 56,
-        width: 168,
-        height: 64,
-        zoneId: 'caller-zone',
-        inspector: {
-          role: isVi ? 'Tác vụ Hệ thống Liên tổ chức' : 'Cross-Tenant System Worker',
-          packageOrPort: 'pg-rls.js · outbox / SLA drainer',
+          role: isVi ? 'Tác vụ Hệ thống Nội bộ (Chỉ trong Giao dịch nội bộ)' : 'Cross-Tenant System Worker (Internal Tx Only)',
+          packageOrPort: 'pg-rls.js · withSystemRlsBypass',
           protocol: 'Internal Scheduler (10s / 60s)',
           payloadOrSchema: "set_config('app.rls_bypass', 'on', true)",
           responsibilities: isVi
-            ? 'Chạy các tác vụ nền (outbox, SLA, boot) trong giao dịch ngắn; lưu và khôi phục current_setting(app.rls_bypass, true) sau khi xong.'
-            : 'Runs background drainers (outbox, SLA, bootstrap) inside short transactions; saves and restores current_setting(app.rls_bypass, true).',
+            ? 'Chỉ dùng cho tác vụ nền nội bộ (outbox, SLA, boot) trong giao dịch ngắn; lưu và khôi phục current_setting(app.rls_bypass, true) ngay sau khi xong.'
+            : 'Restricted strictly to internal background drainers (outbox, SLA, bootstrap) inside short transactions with automatic GUC restore.',
         },
       },
       {
         id: 'als_bypass',
-        title: 'Savepoint Bridge',
-        sub: 'ldx_sp_<n> · Bypass',
+        title: 'ALS Tx & Savepoint Guard',
+        sub: 'runInRlsSavepoint · GUC',
         icon: 'git-branch',
-        x: 496,
+        x: 492,
         y: 232,
-        width: 204,
+        width: 256,
         height: 64,
         zoneId: 'savepoint-zone',
         inspector: {
-          role: isVi ? 'Quản lý Savepoint & GUC Nội bộ' : 'Savepoint & Scoped GUC Controller',
+          role: isVi ? 'Bộ điều phối Giao dịch AsyncLocalStorage & Savepoint' : 'AsyncLocalStorage Tx & Savepoint Guard',
           packageOrPort: 'pg-rls.js · runInRlsSavepoint',
           protocol: 'SQL SAVEPOINT + AsyncLocalStorage',
-          payloadOrSchema: 'SAVEPOINT "ldx_sp_<n>" · app.rls_bypass',
+          payloadOrSchema: 'SAVEPOINT "ldx_sp_<n>" · app.current_org | app.rls_bypass',
           responsibilities: isVi
-            ? 'Cô lập lỗi truy vấn tùy chọn bằng ROLLBACK TO SAVEPOINT để tránh lỗi 25P02 làm hỏng cả giao dịch RLS đang mở.'
-            : 'Isolates optional query failures with ROLLBACK TO SAVEPOINT so PostgreSQL 25P02 aborted-transaction errors never poison active RLS transactions.',
+            ? 'Truyền ngữ cảnh app.current_org (PAT/User) hoặc app.rls_bypass=on (System Worker) trong AsyncLocalStorage và bọc truy vấn tùy chọn bằng SAVEPOINT ldx_sp_<n> để tránh lỗi 25P02.'
+            : 'Propagates tenant-scoped app.current_org or internal-only app.rls_bypass=on in AsyncLocalStorage and isolates optional queries with SAVEPOINT ldx_sp_<n>.',
         },
       },
       {
@@ -442,9 +442,9 @@ const modes = computed<DiagramMode[]>(() => {
         title: 'nocobase_app',
         sub: 'NOBYPASSRLS Role',
         icon: 'terminal',
-        x: 496,
+        x: 492,
         y: 344,
-        width: 204,
+        width: 256,
         height: 64,
         zoneId: 'savepoint-zone',
         inspector: {
@@ -453,8 +453,8 @@ const modes = computed<DiagramMode[]>(() => {
           protocol: 'PostgreSQL Wire · Non-Superuser',
           payloadOrSchema: 'NOSUPERUSER NOBYPASSRLS',
           responsibilities: isVi
-            ? 'Chỉ chấp nhận mở rộng phạm vi khi hàm ứng dụng chủ động thiết lập app.rls_bypass=on trong giao dịch nội bộ.'
-            : 'Permits cross-tenant visibility strictly when application code explicitly sets transaction-local app.rls_bypass=on.',
+            ? 'Tài khoản không đặc quyền; mọi truy vấn PAT chỉ thấy đúng tenant app.current_org, chỉ mở phạm vi liên tổ chức khi System Worker bật app.rls_bypass=on.'
+            : 'Non-superuser role: PAT queries remain strictly scoped to app.current_org unless an internal System Worker sets transaction-local app.rls_bypass=on.',
         },
       },
       {
@@ -462,9 +462,9 @@ const modes = computed<DiagramMode[]>(() => {
         title: 'PG16 FORCE RLS',
         sub: '56 Static + Custom',
         icon: 'database',
-        x: 200,
+        x: 164,
         y: 344,
-        width: 224,
+        width: 236,
         height: 64,
         zoneId: 'savepoint-zone',
         focal: true,
@@ -472,10 +472,10 @@ const modes = computed<DiagramMode[]>(() => {
           role: isVi ? 'Chính sách Cô lập Bảng Dữ liệu' : 'Table Isolation Policy Engine',
           packageOrPort: 'pgvector/pgvector:0.8.1-pg16 · :5432',
           protocol: 'SQL · lattice_tenant_isolation',
-          payloadOrSchema: "app.rls_bypass = 'on' OR app.current_org = '*'",
+          payloadOrSchema: "app.current_org OR (internal app.rls_bypass = 'on')",
           responsibilities: isVi
-            ? 'Kiểm tra nhánh app.rls_bypass hoặc khớp organizationId / organization_id; mọi thao tác ghi cũng phải thỏa mệnh đề WITH CHECK.'
-            : 'Evaluates app.rls_bypass or matches organizationId / organization_id; writes must also satisfy the identical WITH CHECK expression.',
+            ? 'Kiểm tra khớp organizationId / organization_id theo app.current_org, hoặc nhánh app.rls_bypass=on cho tác vụ hệ thống nội bộ; mọi ghi đều qua WITH CHECK.'
+            : 'Matches organizationId / organization_id against app.current_org, or permits internal app.rls_bypass=on; writes enforce the identical WITH CHECK rule.',
         },
       },
     ],
@@ -486,26 +486,24 @@ const modes = computed<DiagramMode[]>(() => {
         id: 'b3',
         from: 'pat_guard',
         to: 'als_bypass',
-        label: 'orgId',
+        label: 'app.current_org',
         kind: 'flow',
         points: [
-          [592, 120],
-          [592, 176],
-          [568, 176],
-          [568, 232],
+          [590, 120],
+          [590, 232],
         ],
       },
       {
         id: 'b4',
         from: 'system_worker',
         to: 'als_bypass',
-        label: 'Bypass',
+        label: 'rls_bypass=on',
         kind: 'primary',
         points: [
-          [804, 120],
-          [804, 180],
-          [648, 180],
-          [648, 232],
+          [836, 120],
+          [836, 184],
+          [704, 184],
+          [704, 232],
         ],
       },
       { id: 'b5', from: 'als_bypass', to: 'nocobase_role', label: 'SAVEPOINT', kind: 'primary' },
@@ -514,33 +512,33 @@ const modes = computed<DiagramMode[]>(() => {
     steps: [
       {
         id: 'step-pat',
-        title: isVi ? 'Xác thực Khóa ldx_pat_* Thời gian Hằng' : 'Constant-Time ldx_pat_* Verification',
-        activeNodes: ['client_pat', 'apisix_gw', 'pat_guard'],
-        activeEdges: ['b1', 'b2'],
+        title: isVi ? 'PAT Verifier -> app.current_org (Tenant)' : 'PAT Verifier -> app.current_org (Tenant Scoped)',
+        activeNodes: ['client_pat', 'apisix_gw', 'pat_guard', 'als_bypass'],
+        activeEdges: ['b1', 'b2', 'b3'],
         description: isVi
-          ? 'PAT Verifier băm khóa bằng SHA-256, so sánh với latticeApiKeys bằng timingSafeEqualHex và giới hạn quyền theo vai trò gắn với khóa.'
-          : 'PAT Verifier hashes the token with SHA-256, compares against latticeApiKeys via timingSafeEqualHex, and clamps header role escalation.',
+          ? 'PAT Verifier băm khóa bằng SHA-256 (timingSafeEqualHex), chặn leo thang vai trò và truyền app.current_org theo tenant vào ALS Tx & Savepoint Guard (không bao giờ bật bypass).'
+          : 'PAT Verifier hashes ldx_pat_* via SHA-256 (timingSafeEqualHex), clamps roles, and binds tenant-scoped app.current_org into ALS Tx & Savepoint Guard.',
         route: 'Authorization: Bearer ldx_pat_<8hex>_<32hex>',
-        payload: '7 scopes: read | write | wms | dmn | iot | ai | ledger',
-        chips: ['timingSafeEqualHex', '60s lastUsedAt throttle'],
+        payload: "set_config('app.current_org', :orgId, true) · 7 scopes",
+        chips: ['Tenant Scoped', 'timingSafeEqualHex'],
       },
       {
         id: 'step-bypass',
-        title: isVi ? 'Mở app.rls_bypass Có Phạm vi Giao dịch' : 'Transaction-Scoped app.rls_bypass',
+        title: isVi ? 'System Worker -> app.rls_bypass=on (Tx Nội bộ)' : 'System Worker -> app.rls_bypass=on (Internal Tx)',
         activeNodes: ['system_worker', 'als_bypass'],
         activeEdges: ['b4'],
         description: isVi
-          ? 'Các bộ rút outbox và SLA dùng withSystemRlsBypass để bật app.rls_bypass=on cục bộ và khôi phục giá trị trước đó khi hoàn tất.'
-          : 'Background outbox and SLA workers use withSystemRlsBypass to enable app.rls_bypass=on locally and restore the prior setting on completion.',
-        route: 'withSystemRlsBypass(fn)',
+          ? 'Chỉ các worker nền nội bộ (outbox, SLA) mới dùng withSystemRlsBypass để bật app.rls_bypass=on trong giao dịch ngắn và tự khôi phục khi xong.'
+          : 'Only internal background workers (outbox, SLA) use withSystemRlsBypass to enable app.rls_bypass=on locally for the duration of a short transaction.',
+        route: 'withSystemRlsBypass(fn) -> ALS Tx Guard',
         payload: "SELECT set_config('app.rls_bypass', 'on', true);",
-        chips: ['Tx-Local', 'Auto-Reset'],
+        chips: ['Internal Tx Only', 'Auto-Reset'],
       },
       {
         id: 'step-savepoint',
-        title: isVi ? 'Cô lập Truy vấn Tùy chọn bằng Savepoint' : 'Savepoint Isolation & Policy Check',
+        title: isVi ? 'runInRlsSavepoint & Chính sách PG16' : 'runInRlsSavepoint & PG16 FORCE RLS',
         activeNodes: ['als_bypass', 'nocobase_role', 'pg16_policies'],
-        activeEdges: ['b3', 'b5', 'b6'],
+        activeEdges: ['b5', 'b6'],
         description: isVi
           ? 'runInRlsSavepoint bọc truy vấn bằng SAVEPOINT "ldx_sp_<n>" trước khi nocobase_app đánh giá chính sách lattice_tenant_isolation trên PG16.'
           : 'runInRlsSavepoint wraps optional queries in SAVEPOINT "ldx_sp_<n>" while nocobase_app evaluates lattice_tenant_isolation on PG16.',
@@ -559,7 +557,7 @@ const modes = computed<DiagramMode[]>(() => {
   <DiagramCanvas
     :title="title"
     :caption="caption"
-    viewBox="0 0 920 444"
+    viewBox="0 0 960 444"
     :modes="modes"
     :lang="resolvedLang"
   />

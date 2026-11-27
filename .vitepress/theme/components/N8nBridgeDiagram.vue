@@ -28,7 +28,7 @@ const title = computed(() =>
 const caption = computed(() =>
   resolvedLang.value === 'vi'
     ? 'Chuyển chế độ để xem cầu nối dxosN8n tới OCI n8n, bắt tay OAuth2 PKCE S256 hai pha và đồng bộ webhook Standard Webhooks / DLQ.'
-    : 'Switch modes to inspect the dxosN8n REST v1 bridge, two-phase OAuth2 PKCE S256 handshake, and dxosEventBus outbound delivery with DLQ.',
+    : 'Switch modes to inspect the dxosN8n REST v1 bridge, two-phase OAuth2 PKCE S256 handshake, and dxosEvents outbound delivery with DLQ.',
 );
 
 const modes = computed<DiagramMode[]>(() => {
@@ -41,7 +41,7 @@ const modes = computed<DiagramMode[]>(() => {
         zones: [
           { id: 'dxos-plane', label: 'Điều phối Studio', x: 16, y: 16, width: 224, height: 368, kind: 'admin' },
           { id: 'vault-plane', label: 'Kho Vault & SSRF Guard', x: 256, y: 16, width: 320, height: 368, kind: 'traffic' },
-          { id: 'n8n-oci', label: 'Biên OCI n8n Chuẩn (External)', x: 592, y: 16, width: 272, height: 368, kind: 'external' },
+          { id: 'n8n-oci', label: 'Biên OCI n8n Chuẩn (External)', x: 592, y: 16, width: 332, height: 368, kind: 'external' },
         ],
         nodes: [
           {
@@ -256,9 +256,10 @@ const modes = computed<DiagramMode[]>(() => {
             kind: 'primary',
             points: [
               [520, 300],
-              [564, 300],
-              [564, 84],
-              [620, 84],
+              [568, 300],
+              [568, 136],
+              [728, 136],
+              [728, 116],
             ],
           },
           {
@@ -269,8 +270,8 @@ const modes = computed<DiagramMode[]>(() => {
             kind: 'flow',
             points: [
               [836, 84],
-              [852, 84],
-              [852, 316],
+              [888, 84],
+              [888, 316],
               [836, 316],
             ],
           },
@@ -340,9 +341,9 @@ const modes = computed<DiagramMode[]>(() => {
             title: 'Khởi tạo PKCE',
             sub: 'dxosVault:oauthStart',
             icon: 'key',
-            x: 36,
+            x: 28,
             y: 60,
-            width: 204,
+            width: 220,
             height: 64,
             zoneId: 'vault-api',
             focal: true,
@@ -360,9 +361,9 @@ const modes = computed<DiagramMode[]>(() => {
             title: 'Xử lý Callback',
             sub: 'dxosVault:oauthCallback',
             icon: 'shield',
-            x: 36,
+            x: 28,
             y: 176,
-            width: 204,
+            width: 220,
             height: 64,
             zoneId: 'vault-api',
             focal: true,
@@ -380,9 +381,9 @@ const modes = computed<DiagramMode[]>(() => {
             title: 'Làm mới Token',
             sub: 'getFreshConnectorToken',
             icon: 'activity',
-            x: 36,
+            x: 28,
             y: 292,
-            width: 204,
+            width: 220,
             height: 64,
             zoneId: 'vault-api',
             inspector: {
@@ -479,7 +480,7 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'store',
             kind: 'flow',
             points: [
-              [240, 100],
+              [248, 100],
               [296, 100],
               [296, 136],
               [336, 136],
@@ -492,7 +493,7 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'authorizeUrl',
             kind: 'primary',
             points: [
-              [240, 76],
+              [248, 76],
               [636, 76],
             ],
           },
@@ -504,8 +505,8 @@ const modes = computed<DiagramMode[]>(() => {
             kind: 'primary',
             points: [
               [736, 124],
-              [736, 208],
-              [240, 208],
+              [736, 192],
+              [248, 192],
             ],
           },
           {
@@ -515,10 +516,9 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'TX1',
             kind: 'flow',
             points: [
-              [240, 192],
-              [296, 192],
-              [296, 160],
-              [336, 160],
+              [138, 176],
+              [138, 148],
+              [336, 148],
             ],
           },
           {
@@ -528,8 +528,8 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'verifier',
             kind: 'primary',
             points: [
-              [240, 224],
-              [600, 224],
+              [248, 228],
+              [600, 228],
               [600, 268],
               [636, 268],
             ],
@@ -555,7 +555,7 @@ const modes = computed<DiagramMode[]>(() => {
               [336, 300],
               [296, 300],
               [296, 324],
-              [240, 324],
+              [248, 324],
             ],
           },
         ],
@@ -602,23 +602,23 @@ const modes = computed<DiagramMode[]>(() => {
         zones: [
           { id: 'outbox-plane', label: 'Xuất bản & Ký Webhook', x: 16, y: 16, width: 220, height: 368, kind: 'admin' },
           { id: 'delivery-plane', label: 'Giao nhận Bền bỉ & Ngắt mạch', x: 252, y: 16, width: 380, height: 368, kind: 'traffic' },
-          { id: 'subscriber-zone', label: 'Đích Webhook & Replay DLQ', x: 648, y: 16, width: 216, height: 368, kind: 'external' },
+          { id: 'subscriber-zone', label: 'Đích Webhook & Replay DLQ', x: 696, y: 16, width: 228, height: 368, kind: 'external' },
         ],
         nodes: [
           {
             id: 'bus-publish',
             title: 'Hàng đợi EventBus',
-            sub: 'dxosEventBus:publish',
+            sub: 'dxosEvents:publish',
             icon: 'bell',
-            x: 36,
+            x: 28,
             y: 84,
-            width: 184,
+            width: 196,
             height: 64,
             zoneId: 'outbox-plane',
             inspector: {
               role: 'Phát sự kiện & lọc danh sách đăng ký',
-              packageOrPort: '@latticedx/plugin-dxos-studio · event-bus.js',
-              protocol: 'dxosEventBus:{publish,listSubscriptions,dispatchNow}',
+              packageOrPort: '@latticedx/plugin-lattice-foundation · event-bus.js',
+              protocol: 'dxosEvents:{publish,listSubscriptions,dispatchNow}',
               payloadOrSchema: 'ce-type · targetUrl · active subscriptions',
               responsibilities:
                 'Đối chiếu loại sự kiện với các đăng ký đang bật (saveSubscription / toggleSubscription) và tạo bản ghi giao nhận.',
@@ -626,12 +626,12 @@ const modes = computed<DiagramMode[]>(() => {
           },
           {
             id: 'std-signer',
-            title: 'Ký Standard Webhooks',
+            title: 'Ký Webhook Chuẩn',
             sub: 'v1,<b64> · ce-type',
             icon: 'lock',
-            x: 36,
+            x: 28,
             y: 232,
-            width: 184,
+            width: 196,
             height: 64,
             zoneId: 'outbox-plane',
             focal: true,
@@ -696,7 +696,7 @@ const modes = computed<DiagramMode[]>(() => {
             inspector: {
               role: 'Cô lập đích lỗi liên tiếp & khôi phục',
               packageOrPort: 'event-bus.js · Circuit Breaker',
-              protocol: 'dxosEventBus:resetCircuit',
+              protocol: 'dxosEvents:resetCircuit',
               payloadOrSchema: 'CIRCUIT_FAILURE_THRESHOLD = 5 · COOLDOWN = 120000ms',
               responsibilities:
                 'Mở mạch trong 120 giây sau 5 lần thất bại liên tiếp để tránh nghẽn hàng đợi; cho phép đóng lại qua resetCircuit.',
@@ -714,7 +714,7 @@ const modes = computed<DiagramMode[]>(() => {
             zoneId: 'delivery-plane',
             inspector: {
               role: 'Lưu sự kiện cạn số lần thử lại',
-              packageOrPort: 'dxosEventBus:listDeliveries',
+              packageOrPort: 'dxosEvents:listDeliveries',
               protocol: 'Dead Letter Queue (PG16)',
               payloadOrSchema: "status = 'dlq' after 5 attempts",
               responsibilities:
@@ -726,9 +726,9 @@ const modes = computed<DiagramMode[]>(() => {
             title: 'Webhook n8n Đích',
             sub: 'Webhook Trigger',
             icon: 'plug',
-            x: 668,
+            x: 716,
             y: 84,
-            width: 176,
+            width: 188,
             height: 64,
             zoneId: 'subscriber-zone',
             inspector: {
@@ -745,16 +745,16 @@ const modes = computed<DiagramMode[]>(() => {
             title: 'Phát lại DLQ',
             sub: ':replayDlq · DLQ',
             icon: 'workflow',
-            x: 668,
+            x: 716,
             y: 232,
-            width: 176,
+            width: 188,
             height: 64,
             zoneId: 'subscriber-zone',
             inspector: {
               role: 'Gửi lại các bản ghi DLQ sau khi sửa đích',
-              packageOrPort: 'dxosEventBus:replayDlq',
+              packageOrPort: 'dxosEvents:replayDlq',
               protocol: 'Manual / API Replay',
-              payloadOrSchema: 'POST /api/dxosEventBus:replayDlq',
+              payloadOrSchema: 'POST /api/dxosEvents:replayDlq',
               responsibilities:
                 'Đưa các giao nhận trong DLQ trở lại hàng đợi giao nhận sau khi endpoint đích hoặc cầu dao đã sẵn sàng.',
             },
@@ -768,8 +768,8 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'sign',
             kind: 'primary',
             points: [
-              [128, 148],
-              [128, 232],
+              [124, 148],
+              [124, 232],
             ],
           },
           {
@@ -779,7 +779,7 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'dispatch',
             kind: 'primary',
             points: [
-              [220, 264],
+              [224, 264],
               [244, 264],
               [244, 116],
               [272, 116],
@@ -794,8 +794,8 @@ const modes = computed<DiagramMode[]>(() => {
             points: [
               [352, 84],
               [352, 48],
-              [756, 48],
-              [756, 84],
+              [810, 48],
+              [810, 84],
             ],
           },
           {
@@ -805,7 +805,7 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'fail',
             kind: 'flow',
             points: [
-              [668, 116],
+              [716, 116],
               [616, 116],
             ],
           },
@@ -841,7 +841,7 @@ const modes = computed<DiagramMode[]>(() => {
             kind: 'flow',
             points: [
               [616, 264],
-              [668, 264],
+              [716, 264],
             ],
           },
           {
@@ -851,8 +851,8 @@ const modes = computed<DiagramMode[]>(() => {
             label: 'redeliver',
             kind: 'primary',
             points: [
-              [756, 232],
-              [756, 148],
+              [810, 232],
+              [810, 148],
             ],
           },
         ],
@@ -863,8 +863,8 @@ const modes = computed<DiagramMode[]>(() => {
             activeNodes: ['bus-publish', 'std-signer', 'ssrf-dns', 'n8n-webhook'],
             activeEdges: ['b1', 'b2', 'b3'],
             description:
-              'dxosEventBus gắn webhook-id, webhook-timestamp, webhook-signature: v1,<b64> và ce-type, kiểm tra SSRF rồi POST với timeout 5000ms.',
-            route: 'POST /api/dxosEventBus:publish',
+              'dxosEvents gắn webhook-id, webhook-timestamp, webhook-signature: v1,<b64> và ce-type, kiểm tra SSRF rồi POST với timeout 5000ms.',
+            route: 'POST /api/dxosEvents:publish',
             payload: 'webhook-signature: v1,<b64> · timeout 5000ms',
             chips: ['Standard Webhooks', 'SSRF Guard'],
           },
@@ -885,8 +885,8 @@ const modes = computed<DiagramMode[]>(() => {
             activeNodes: ['retry-backoff', 'dlq-store', 'dlq-replay', 'n8n-webhook'],
             activeEdges: ['b6', 'b7', 'b8'],
             description:
-              'Khi cạn số lần thử lại, giao nhận chuyển sang trạng thái dlq và được đẩy lại qua dxosEventBus:replayDlq.',
-            route: 'POST /api/dxosEventBus:replayDlq',
+              'Khi cạn số lần thử lại, giao nhận chuyển sang trạng thái dlq và được đẩy lại qua dxosEvents:replayDlq.',
+            route: 'POST /api/dxosEvents:replayDlq',
             payload: "status: 'dlq' -> redelivered",
             chips: ['DLQ', 'Zero Event Loss'],
           },
@@ -903,7 +903,7 @@ const modes = computed<DiagramMode[]>(() => {
       zones: [
         { id: 'dxos-plane', label: 'Studio Control Plane', x: 16, y: 16, width: 224, height: 368, kind: 'admin' },
         { id: 'vault-plane', label: 'Vault & SSRF Guard', x: 256, y: 16, width: 320, height: 368, kind: 'traffic' },
-        { id: 'n8n-oci', label: 'Stock n8n OCI (External)', x: 592, y: 16, width: 272, height: 368, kind: 'external' },
+        { id: 'n8n-oci', label: 'Stock n8n OCI (External)', x: 592, y: 16, width: 332, height: 368, kind: 'external' },
       ],
       nodes: [
         {
@@ -1118,9 +1118,10 @@ const modes = computed<DiagramMode[]>(() => {
           kind: 'primary',
           points: [
             [520, 300],
-            [564, 300],
-            [564, 84],
-            [620, 84],
+            [568, 300],
+            [568, 136],
+            [728, 136],
+            [728, 116],
           ],
         },
         {
@@ -1131,8 +1132,8 @@ const modes = computed<DiagramMode[]>(() => {
           kind: 'flow',
           points: [
             [836, 84],
-            [852, 84],
-            [852, 316],
+            [888, 84],
+            [888, 316],
             [836, 316],
           ],
         },
@@ -1202,9 +1203,9 @@ const modes = computed<DiagramMode[]>(() => {
           title: 'Start PKCE',
           sub: 'dxosVault:oauthStart',
           icon: 'key',
-          x: 36,
+          x: 28,
           y: 60,
-          width: 204,
+          width: 220,
           height: 64,
           zoneId: 'vault-api',
           focal: true,
@@ -1222,9 +1223,9 @@ const modes = computed<DiagramMode[]>(() => {
           title: 'PKCE Callback',
           sub: 'dxosVault:oauthCallback',
           icon: 'shield',
-          x: 36,
+          x: 28,
           y: 176,
-          width: 204,
+          width: 220,
           height: 64,
           zoneId: 'vault-api',
           focal: true,
@@ -1242,9 +1243,9 @@ const modes = computed<DiagramMode[]>(() => {
           title: 'Token Refresh',
           sub: 'getFreshConnectorToken',
           icon: 'activity',
-          x: 36,
+          x: 28,
           y: 292,
-          width: 204,
+          width: 220,
           height: 64,
           zoneId: 'vault-api',
           inspector: {
@@ -1341,7 +1342,7 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'store',
           kind: 'flow',
           points: [
-            [240, 100],
+            [248, 100],
             [296, 100],
             [296, 136],
             [336, 136],
@@ -1354,7 +1355,7 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'authorizeUrl',
           kind: 'primary',
           points: [
-            [240, 76],
+            [248, 76],
             [636, 76],
           ],
         },
@@ -1366,8 +1367,8 @@ const modes = computed<DiagramMode[]>(() => {
           kind: 'primary',
           points: [
             [736, 124],
-            [736, 208],
-            [240, 208],
+            [736, 192],
+            [248, 192],
           ],
         },
         {
@@ -1377,10 +1378,9 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'TX1',
           kind: 'flow',
           points: [
-            [240, 192],
-            [296, 192],
-            [296, 160],
-            [336, 160],
+            [138, 176],
+            [138, 148],
+            [336, 148],
           ],
         },
         {
@@ -1390,8 +1390,8 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'verifier',
           kind: 'primary',
           points: [
-            [240, 224],
-            [600, 224],
+            [248, 228],
+            [600, 228],
             [600, 268],
             [636, 268],
           ],
@@ -1417,7 +1417,7 @@ const modes = computed<DiagramMode[]>(() => {
             [336, 300],
             [296, 300],
             [296, 324],
-            [240, 324],
+            [248, 324],
           ],
         },
       ],
@@ -1464,13 +1464,13 @@ const modes = computed<DiagramMode[]>(() => {
       zones: [
         { id: 'outbox-plane', label: 'Publish & Webhook Signing', x: 16, y: 16, width: 220, height: 368, kind: 'admin' },
         { id: 'delivery-plane', label: 'Durable Delivery & Circuit', x: 252, y: 16, width: 380, height: 368, kind: 'traffic' },
-        { id: 'subscriber-zone', label: 'Webhook Target & DLQ Replay', x: 648, y: 16, width: 216, height: 368, kind: 'external' },
+        { id: 'subscriber-zone', label: 'Webhook Target & DLQ Replay', x: 696, y: 16, width: 228, height: 368, kind: 'external' },
       ],
       nodes: [
         {
           id: 'bus-publish',
           title: 'EventBus Queue',
-          sub: 'dxosEventBus:publish',
+          sub: 'dxosEvents:publish',
           icon: 'bell',
           x: 36,
           y: 84,
@@ -1479,8 +1479,8 @@ const modes = computed<DiagramMode[]>(() => {
           zoneId: 'outbox-plane',
           inspector: {
             role: 'Event publication & subscription matcher',
-            packageOrPort: '@latticedx/plugin-dxos-studio · event-bus.js',
-            protocol: 'dxosEventBus:{publish,listSubscriptions,dispatchNow}',
+            packageOrPort: '@latticedx/plugin-lattice-foundation · event-bus.js',
+            protocol: 'dxosEvents:{publish,listSubscriptions,dispatchNow}',
             payloadOrSchema: 'ce-type · targetUrl · active subscriptions',
             responsibilities:
               'Matches published domain events against enabled subscriptions (saveSubscription / toggleSubscription) and queues deliveries.',
@@ -1558,7 +1558,7 @@ const modes = computed<DiagramMode[]>(() => {
           inspector: {
             role: 'Isolates failing webhook endpoints',
             packageOrPort: 'event-bus.js · Circuit Breaker',
-            protocol: 'dxosEventBus:resetCircuit',
+            protocol: 'dxosEvents:resetCircuit',
             payloadOrSchema: 'CIRCUIT_FAILURE_THRESHOLD = 5 · COOLDOWN = 120000ms',
             responsibilities:
               'Trips open for 120 seconds after 5 consecutive delivery failures to protect worker queues; manually resettable via resetCircuit.',
@@ -1576,7 +1576,7 @@ const modes = computed<DiagramMode[]>(() => {
           zoneId: 'delivery-plane',
           inspector: {
             role: 'Stores deliveries exhausting all retries',
-            packageOrPort: 'dxosEventBus:listDeliveries',
+            packageOrPort: 'dxosEvents:listDeliveries',
             protocol: 'Dead Letter Queue (PG16)',
             payloadOrSchema: "status = 'dlq' after 5 attempts",
             responsibilities:
@@ -1588,9 +1588,9 @@ const modes = computed<DiagramMode[]>(() => {
           title: 'n8n Webhook',
           sub: 'Webhook Trigger',
           icon: 'plug',
-          x: 668,
+          x: 716,
           y: 84,
-          width: 176,
+          width: 188,
           height: 64,
           zoneId: 'subscriber-zone',
           inspector: {
@@ -1607,16 +1607,16 @@ const modes = computed<DiagramMode[]>(() => {
           title: 'DLQ Replay',
           sub: ':replayDlq · DLQ',
           icon: 'workflow',
-          x: 668,
+          x: 716,
           y: 232,
-          width: 176,
+          width: 188,
           height: 64,
           zoneId: 'subscriber-zone',
           inspector: {
             role: 'Re-queues DLQ items after recovery',
-            packageOrPort: 'dxosEventBus:replayDlq',
+            packageOrPort: 'dxosEvents:replayDlq',
             protocol: 'Manual / API Replay',
-            payloadOrSchema: 'POST /api/dxosEventBus:replayDlq',
+            payloadOrSchema: 'POST /api/dxosEvents:replayDlq',
             responsibilities:
               'Re-enqueues dlq deliveries for dispatch once the downstream subscriber or circuit breaker recovers.',
           },
@@ -1656,8 +1656,8 @@ const modes = computed<DiagramMode[]>(() => {
           points: [
             [352, 84],
             [352, 48],
-            [756, 48],
-            [756, 84],
+            [810, 48],
+            [810, 84],
           ],
         },
         {
@@ -1667,7 +1667,7 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'fail',
           kind: 'flow',
           points: [
-            [668, 116],
+            [716, 116],
             [616, 116],
           ],
         },
@@ -1703,7 +1703,7 @@ const modes = computed<DiagramMode[]>(() => {
           kind: 'flow',
           points: [
             [616, 264],
-            [668, 264],
+            [716, 264],
           ],
         },
         {
@@ -1713,8 +1713,8 @@ const modes = computed<DiagramMode[]>(() => {
           label: 'redeliver',
           kind: 'primary',
           points: [
-            [756, 232],
-            [756, 148],
+            [810, 232],
+            [810, 148],
           ],
         },
       ],
@@ -1725,8 +1725,8 @@ const modes = computed<DiagramMode[]>(() => {
           activeNodes: ['bus-publish', 'std-signer', 'ssrf-dns', 'n8n-webhook'],
           activeEdges: ['b1', 'b2', 'b3'],
           description:
-            'dxosEventBus signs payloads with webhook-id, webhook-timestamp, webhook-signature: v1,<b64>, and ce-type, then POSTs with a 5000ms timeout.',
-          route: 'POST /api/dxosEventBus:publish',
+            'dxosEvents signs payloads with webhook-id, webhook-timestamp, webhook-signature: v1,<b64>, and ce-type, then POSTs with a 5000ms timeout.',
+          route: 'POST /api/dxosEvents:publish',
           payload: 'webhook-signature: v1,<b64> · timeout 5000ms',
           chips: ['Standard Webhooks', 'SSRF Guard'],
         },
@@ -1747,8 +1747,8 @@ const modes = computed<DiagramMode[]>(() => {
           activeNodes: ['retry-backoff', 'dlq-store', 'dlq-replay', 'n8n-webhook'],
           activeEdges: ['b6', 'b7', 'b8'],
           description:
-            'Exhausted deliveries transition to status dlq and can be replayed cleanly via dxosEventBus:replayDlq once endpoints recover.',
-          route: 'POST /api/dxosEventBus:replayDlq',
+            'Exhausted deliveries transition to status dlq and can be replayed cleanly via dxosEvents:replayDlq once endpoints recover.',
+          route: 'POST /api/dxosEvents:replayDlq',
           payload: "status: 'dlq' -> redelivered",
           chips: ['DLQ', 'Zero Event Loss'],
         },
@@ -1762,7 +1762,7 @@ const modes = computed<DiagramMode[]>(() => {
   <DiagramCanvas
     :title="title"
     :caption="caption"
-    viewBox="0 0 880 400"
+    viewBox="0 0 940 400"
     :modes="modes"
     :lang="resolvedLang"
   />

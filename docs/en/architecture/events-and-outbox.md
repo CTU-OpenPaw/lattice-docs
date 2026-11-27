@@ -1,6 +1,6 @@
 ---
 title: Events, Transactional Outbox & Valkey PubSub
-description: CloudEvents 1.0 schema, dxosEventBus, PostgreSQL FOR UPDATE SKIP LOCKED drainers on latticeWebhookDeliveries and latticeContextOutbox, and strict Valkey 8.1 DB 0/1/2 separation.
+description: CloudEvents 1.0 schema, dxosEvents, PostgreSQL FOR UPDATE SKIP LOCKED drainers on latticeWebhookDeliveries and latticeContextOutbox, and strict Valkey 8.1 DB 0/1/2 separation.
 ---
 
 <script setup>
@@ -46,7 +46,7 @@ ce-specversion: 1.0`,
 
 LatticeDX separates durable asynchronous delivery from ephemeral real-time fan-out. Every domain event and digital-twin projection commits atomically into PostgreSQL 16 outbox tables drained with `FOR UPDATE SKIP LOCKED`, while Valkey 8.1 is strictly partitioned across application cache (DB 0), SSE surface PubSub (DB 1), and OIDC PKCE session state (DB 2). **Valkey Streams are not used anywhere in the stack.**
 
-## CloudEvents 1.0 Schema and `dxosEventBus`
+## CloudEvents 1.0 Schema and `dxosEvents`
 
 Implemented in `plugins/nocobase/plugin-lattice-foundation/src/server/event-bus.js`, `publishDomainEvent` emits envelopes conforming to **CloudEvents 1.0**. When invoked inside a business transaction, it writes an immutable event row to `latticeEventBus` and fans out pending rows into `latticeWebhookDeliveries` for every active subscription whose `eventPattern` matches the event type.
 
@@ -95,7 +95,7 @@ Retry scheduling, dead-letter handling, and endpoint isolation follow four deter
 | Mechanism | Threshold / Formula | Runtime Behavior |
 | :--- | :--- | :--- |
 | Exponential backoff | `min(3600000, 5000 * 2^attempt) + jitter` | Triggered on timeout (`WEBHOOK_TIMEOUT_MS = 5000`ms) or non-`2xx` responses; `jitter` adds up to `25%` capped at `5000`ms. |
-| Dead-letter queue (`dlq`) | `DEFAULT_MAX_ATTEMPTS = 5` | Moves exhausted deliveries to `'dlq'` for operator inspection and replay via `dxosEventBus:replayDlq`. |
+| Dead-letter queue (`dlq`) | `DEFAULT_MAX_ATTEMPTS = 5` | Moves exhausted deliveries to `'dlq'` for operator inspection and replay via `dxosEvents:replayDlq`. |
 | Subscription circuit breaker | `CIRCUIT_FAILURE_THRESHOLD = 5`, `CIRCUIT_COOLDOWN_MS = 120000` | Opens `circuitState` for 2 minutes after 5 consecutive failures, then probes `'half_open'` on the next due batch. |
 | SSRF validation | `assertSafeConnectorUrlAsync` | Resolves target DNS before every outbound HTTP call, blocking loopback, private, and cloud metadata IPs unless allowlisted. |
 

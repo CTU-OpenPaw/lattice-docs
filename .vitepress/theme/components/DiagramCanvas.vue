@@ -1030,12 +1030,12 @@ onBeforeUnmount(() => {
           "
           class="ldx-step-meta"
         >
-          <code v-if="currentStep.route" class="ldx-meta-chip is-flow">
+          <span v-if="currentStep.route" class="ldx-meta-chip is-flow">
             {{ labels.route }}: {{ currentStep.route }}
-          </code>
-          <code v-if="currentStep.payload" class="ldx-meta-chip">
+          </span>
+          <span v-if="currentStep.payload" class="ldx-meta-chip">
             {{ currentStep.payload }}
-          </code>
+          </span>
           <span v-for="chip in currentStep.chips" :key="chip" class="ldx-meta-chip">
             {{ chip }}
           </span>
@@ -1456,6 +1456,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--ldx-border, #E7E5E4);
   background-color: var(--ldx-surface-alt, #F2F0EA);
   color: var(--ldx-ink-2, #44403C);
+  transition: none;
 }
 
 .ldx-meta-chip.is-flow {
@@ -1521,6 +1522,34 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
+  .ldx-diagram-toolbar {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 8px 12px;
+  }
+
+  .ldx-toolbar-left {
+    flex: 1 1 100%;
+    align-items: flex-start;
+  }
+
+  .ldx-toolbar-dot {
+    margin-top: 6px;
+  }
+
+  .ldx-toolbar-title {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.4;
+  }
+
+  .ldx-toolbar-controls {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
   .ldx-ctrl-label {
     display: none;
   }

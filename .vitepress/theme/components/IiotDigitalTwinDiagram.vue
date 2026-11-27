@@ -31,12 +31,12 @@ const meta = computed(() =>
     ? {
         title: 'Digital Twin IIoT 2 Chiều & Động cơ Arrhenius MKT',
         caption:
-          'Vòng kín cảm biến biên -> Mosquitto DynSec/LWT -> FIWARE Orion-LD NGSI-LD -> tính toán MKT Arrhenius -> cổng HITL 2.0 °C -> lệnh xuống qua Node-RED.',
+          'Uplink chuẩn: Cảm biến -> Mosquitto DynSec -> Node-RED (:telemetryIngest) -> NocoBase MKT & PG16 Context Outbox -> FIWARE Orion-LD -> :orionNotify -> Twin Shadow & Alarm / hold_mkt; Downlink qua cổng HITL 2.0 °C.',
       }
     : {
         title: '2-Way IIoT Digital Twin & Arrhenius MKT Engine',
         caption:
-          'Closed-loop edge sensors -> Mosquitto DynSec/LWT -> FIWARE Orion-LD NGSI-LD -> Arrhenius MKT calculation -> 2.0 °C HITL delta guard -> Node-RED downlink.',
+          'Verified uplink: Sensors -> Mosquitto DynSec -> Node-RED (:telemetryIngest) -> NocoBase MKT & PG16 Context Outbox -> FIWARE Orion-LD -> :orionNotify -> Twin Shadow & Alarm / hold_mkt; HITL-guarded downlink via Node-RED.',
       },
 );
 
@@ -49,26 +49,26 @@ const modes = computed<DiagramMode[]>(() => {
       label: isVi ? 'Biên IIoT (iiot-net)' : 'IIoT Edge (iiot-net)',
       x: 16,
       y: 16,
-      width: 200,
-      height: 344,
+      width: 224,
+      height: 368,
       kind: 'external',
     },
     {
       id: 'context-plane',
-      label: isVi ? 'Bản sao số NGSI-LD & Động cơ Arrhenius MKT' : 'NGSI-LD Context & Arrhenius MKT Engine',
-      x: 232,
+      label: isVi ? 'Node-RED Bridge, NocoBase MKT Outbox & Orion-LD' : 'Node-RED Bridge, NocoBase MKT Outbox & Orion-LD',
+      x: 260,
       y: 16,
-      width: 408,
-      height: 344,
+      width: 540,
+      height: 368,
       kind: 'admin',
     },
     {
       id: 'control-plane',
-      label: isVi ? 'Cổng HITL & Lệnh xuống' : 'HITL Guard & Downlink',
-      x: 656,
+      label: isVi ? 'WebGIS, hold_mkt & Cổng HITL' : 'WebGIS, hold_mkt & HITL Guard',
+      x: 820,
       y: 16,
-      width: 208,
-      height: 344,
+      width: 268,
+      height: 368,
       kind: 'traffic',
     },
   ];
@@ -77,11 +77,11 @@ const modes = computed<DiagramMode[]>(() => {
     {
       id: 'edge_sensors',
       title: isVi ? 'Cảm biến Biên' : 'Edge Sensors',
-      sub: 'QoS 1 · LWT status',
+      sub: 'QoS 1 · LWT & ack',
       icon: 'radio',
       x: 28,
       y: 60,
-      width: 176,
+      width: 200,
       height: 64,
       zoneId: 'iiot-edge',
       inspector: isVi
@@ -89,27 +89,27 @@ const modes = computed<DiagramMode[]>(() => {
             role: 'Cảm biến kho lạnh, xe vận tải và bộ điều khiển biên MQTT',
             packageOrPort: 'Field Devices · MQTT QoS 1',
             protocol: 'MQTT v3.1.1 / v5 · LWT',
-            payloadOrSchema: 'latticedx/<orgId>/<deviceKey>/... | .../status | .../ack',
+            payloadOrSchema: 'latticedx/<org>/<dev>/telemetry | status | command | ack',
             responsibilities:
-              'Phát số đo nhiệt độ/trạng thái theo chủ đề tenant, gửi gói Birth/Death LWT và phản hồi xác nhận lệnh điều khiển trên kênh ack.',
+              'Phát số đo telemetry lên Mosquitto, gửi gói Birth/Death LWT và phản hồi xác nhận lệnh điều khiển trên kênh .../ack.',
           }
         : {
             role: 'Cold-chain sensors, reefer gateways, and field actuators',
             packageOrPort: 'Field Devices · MQTT QoS 1',
             protocol: 'MQTT v3.1.1 / v5 · LWT',
-            payloadOrSchema: 'latticedx/<orgId>/<deviceKey>/... | .../status | .../ack',
+            payloadOrSchema: 'latticedx/<org>/<dev>/telemetry | status | command | ack',
             responsibilities:
-              'Publishes telemetry under tenant-scoped MQTT topics, emits Birth/Death LWT status, and returns command acknowledgments.',
+              'Publishes telemetry to Mosquitto, emits Birth/Death LWT status, and returns command acknowledgments on .../ack.',
           },
     },
     {
       id: 'mosquitto',
-      title: isVi ? 'Mosquitto DynSec' : 'Mosquitto DynSec',
+      title: 'Mosquitto DynSec',
       sub: ':1883 · allow_anon false',
       icon: 'lock',
       x: 28,
-      y: 224,
-      width: 176,
+      y: 244,
+      width: 200,
       height: 64,
       zoneId: 'iiot-edge',
       focal: true,
@@ -118,131 +118,152 @@ const modes = computed<DiagramMode[]>(() => {
             role: 'MQTT Broker nội bộ khóa xác thực ẩn danh với Dynamic Security',
             packageOrPort: 'eclipse-mosquitto:2.0.21 · :1883 (iiot-net)',
             protocol: 'MQTT · mosquitto_dynamic_security.so',
-            payloadOrSchema: 'max_queued_messages=1000 | max_packet_size=65536 | default deny',
+            payloadOrSchema: 'max_queued_messages=1000 | default deny ACL',
             responsibilities:
-              'Chạy trong mạng cô lập iiot-net không mở cổng host; mặc định từ chối mọi ACL và chỉ cấp quyền từng thiết bị qua DynSec.',
+              'Chạy trong mạng cô lập iiot-net không mở cổng host; mọi thông điệp đều đi qua Node-RED Bridge chứ không kết nối tắt tới Orion-LD.',
           }
         : {
             role: 'Internal MQTT broker enforced by Dynamic Security ACLs',
             packageOrPort: 'eclipse-mosquitto:2.0.21 · :1883 (iiot-net)',
             protocol: 'MQTT · mosquitto_dynamic_security.so',
-            payloadOrSchema: 'max_queued_messages=1000 | max_packet_size=65536 | default deny',
+            payloadOrSchema: 'max_queued_messages=1000 | default deny ACL',
             responsibilities:
-              'Isolated on internal iiot-net with allow_anonymous=false, default-deny ACLs, persistence enabled, and per-device roles.',
+              'Isolated on internal iiot-net with default-deny ACLs; telemetry is consumed by Node-RED rather than jumping directly to Orion-LD.',
+          },
+    },
+    {
+      id: 'nodered',
+      title: isVi ? 'Cầu nối Node-RED' : 'Node-RED Bridge',
+      sub: ':1880 · Sub & /twin/cmd',
+      icon: 'workflow',
+      x: 304,
+      y: 244,
+      width: 204,
+      height: 64,
+      zoneId: 'context-plane',
+      focal: true,
+      inspector: isVi
+        ? {
+            role: 'Cầu nối 2 chiều MQTT <-> HTTP của hạ tầng IIoT',
+            packageOrPort: 'nodered/node-red:4.0.9 · :1880 (flows.json)',
+            protocol: 'MQTT Sub (QoS 1) · HTTP POST + X-Lattice-Edge-Token',
+            payloadOrSchema: 'POST :telemetryIngest | /twin/command | :twinAckCommand',
+            responsibilities:
+              'Đăng ký latticedx/+/+/telemetry trên Mosquitto để POST về NocoBase :telemetryIngest, phát lệnh downlink /twin/command và chuyển tiếp ack.',
+          }
+        : {
+            role: 'Bidirectional MQTT <-> HTTP IIoT edge bridge',
+            packageOrPort: 'nodered/node-red:4.0.9 · :1880 (flows.json)',
+            protocol: 'MQTT Sub (QoS 1) · HTTP POST + X-Lattice-Edge-Token',
+            payloadOrSchema: 'POST :telemetryIngest | /twin/command | :twinAckCommand',
+            responsibilities:
+              'Subscribes to Mosquitto telemetry to POST dxosBlocks:telemetryIngest, publishes /twin/command downlinks, and relays device acks to :twinAckCommand.',
+          },
+    },
+    {
+      id: 'noco_mkt_outbox',
+      title: isVi ? 'NocoBase MKT & Outbox' : 'NocoBase MKT & Outbox',
+      sub: ':telemetryIngest · PG16',
+      icon: 'activity',
+      x: 304,
+      y: 60,
+      width: 212,
+      height: 64,
+      zoneId: 'context-plane',
+      focal: true,
+      inspector: isVi
+        ? {
+            role: 'Tiếp nhận đo đạc, tính Arrhenius MKT & ghi PG16 Context Outbox',
+            packageOrPort: 'blocks-api.js · alarm-engine.js · latticeContextOutbox',
+            protocol: 'POST :telemetryIngest · 10s SKIP LOCKED Outbox',
+            payloadOrSchema: 'R=0.008314472, ΔH=83.14472 · FOR UPDATE SKIP LOCKED',
+            responsibilities:
+              'Ghi telemetryPoints, chạy ingestTelemetryPoint (Arrhenius MKT) và xếp hàng đợi latticeContextOutbox để đồng bộ sang Orion-LD mỗi 10s.',
+          }
+        : {
+            role: 'Telemetry ingest, Arrhenius MKT & PG16 Context Outbox',
+            packageOrPort: 'blocks-api.js · alarm-engine.js · latticeContextOutbox',
+            protocol: 'POST :telemetryIngest · 10s SKIP LOCKED Outbox',
+            payloadOrSchema: 'R=0.008314472, ΔH=83.14472 · FOR UPDATE SKIP LOCKED',
+            responsibilities:
+              'Persists telemetryPoints, evaluates Arrhenius MKT via ingestTelemetryPoint, and enqueues latticeContextOutbox for 10s Orion-LD sync.',
           },
     },
     {
       id: 'orion_ld',
-      title: isVi ? 'FIWARE Orion-LD' : 'FIWARE Orion-LD',
+      title: 'FIWARE Orion-LD',
       sub: ':1026 · NGSILD-Tenant',
       icon: 'globe',
-      x: 248,
+      x: 600,
       y: 60,
-      width: 168,
+      width: 192,
       height: 64,
       zoneId: 'context-plane',
-      focal: true,
-      inspector: isVi
-        ? {
-            role: 'Context Broker NGSI-LD đa tenant chuẩn ETSI',
-            packageOrPort: 'fiware/orion-ld:1.12.0 · :1026 (MongoDB 8.0)',
-            protocol: 'HTTP NGSI-LD · NGSILD-Tenant',
-            payloadOrSchema: 'urn:ngsi-ld:Asset:<orgId>:native:<assetId>',
-            responsibilities:
-              'Quản lý thực thể Asset/Location/Vehicle/Shipment theo ngữ cảnh context.jsonld và đẩy thông báo chuẩn hóa (throttle 5s) về NocoBase.',
-          }
-        : {
-            role: 'Multi-tenant ETSI NGSI-LD context broker',
-            packageOrPort: 'fiware/orion-ld:1.12.0 · :1026 (MongoDB 8.0)',
-            protocol: 'HTTP NGSI-LD · NGSILD-Tenant',
-            payloadOrSchema: 'urn:ngsi-ld:Asset:<orgId>:native:<assetId>',
-            responsibilities:
-              'Maintains Asset, Location, Vehicle, and Shipment entities and dispatches normalized subscriptions (5s default throttle) to dxosBroker:orionNotify.',
-          },
-    },
-    {
-      id: 'mkt_engine',
-      title: isVi ? 'Arrhenius MKT' : 'Arrhenius MKT',
-      sub: 'R 0.008314472 · ΔH 83.14',
-      icon: 'activity',
-      x: 456,
-      y: 60,
-      width: 168,
-      height: 64,
-      zoneId: 'context-plane',
-      focal: true,
-      inspector: isVi
-        ? {
-            role: 'Bộ tính Mean Kinetic Temperature ổn định số học (Haynes / ICH Q1A)',
-            packageOrPort: 'wms-engine.js · data-governance.js',
-            protocol: 'Log-Sum-Exp · Kelvin Offset -273.15',
-            payloadOrSchema: 'R = 0.008314472 kJ/(mol·K) | ΔH = 83.14472 kJ/mol',
-            responsibilities:
-              'Tính mktCelsius bằng biểu thức log-sum-exp tránh tràn số mũ (từ chối T <= -273.15 °C) và tự động kích hoạt hold_mkt khi vượt ngưỡng.',
-          }
-        : {
-            role: 'Numerically stabilized Arrhenius MKT calculator',
-            packageOrPort: 'wms-engine.js · data-governance.js',
-            protocol: 'Log-Sum-Exp · Kelvin Offset -273.15',
-            payloadOrSchema: 'R = 0.008314472 kJ/(mol·K) | ΔH = 83.14472 kJ/mol',
-            responsibilities:
-              'Evaluates mktKelvin = a / (-lnMean) via log-sum-exp with R=0.008314472 and deltaH=83.14472, flagging breached thresholds automatically.',
-          },
+      inspector: {
+        role: isVi ? 'Context Broker NGSI-LD đa tenant chuẩn ETSI' : 'Multi-tenant ETSI NGSI-LD context broker',
+        packageOrPort: 'fiware/orion-ld:1.12.0 · :1026 (MongoDB 8.0)',
+        protocol: 'HTTP NGSI-LD · NGSILD-Tenant',
+        payloadOrSchema: 'urn:ngsi-ld:Asset:<orgId>:native:<assetId>',
+        responsibilities: isVi
+          ? 'Nhận cập nhật thực thể NGSI-LD từ PG16 Context Outbox và phát thông báo đăng ký (throttle 5s) tới POST /api/dxosBroker:orionNotify.'
+          : 'Receives NGSI-LD entity updates from PG16 Context Outbox and dispatches subscription notifications (5s throttle) to dxosBroker:orionNotify.',
+      },
     },
     {
       id: 'twin_shadow',
-      title: isVi ? 'Twin Shadow & WMS' : 'Twin Shadow & WMS',
-      sub: 'latticeTwinShadows',
+      title: isVi ? 'Twin Shadow & Sự cố' : 'Twin Shadow & Alarm',
+      sub: 'hold_mkt · :orionNotify',
       icon: 'database',
-      x: 248,
-      y: 224,
-      width: 168,
+      x: 592,
+      y: 244,
+      width: 192,
       height: 64,
       zoneId: 'context-plane',
+      focal: true,
       inspector: isVi
         ? {
-            role: 'Lưu trạng thái reported/desired của Digital Twin và lô hàng WMS',
-            packageOrPort: 'digital-twin.js · latticeStockLots',
-            protocol: 'PG16 FORCE RLS · app.current_org',
-            payloadOrSchema: 'desiredPatch: targetTempC, maxTempC, minTempC, defrostMode, fanMode, doorLock',
+            role: 'Cập nhật Digital Twin Shadow, cảnh báo SHA-256 & giữ lô hold_mkt',
+            packageOrPort: 'broker-control.js · digital-twin.js · alarm-engine.js',
+            protocol: 'POST :orionNotify · PG16 FORCE RLS',
+            payloadOrSchema: 'latticeTwinShadows · latticeIncidentCases · hold_mkt',
             responsibilities:
-              'Đồng bộ thuộc tính reported, giữ trạng thái lô hold_mkt khi vượt MKT và khởi tạo yêu cầu thay đổi desiredPatch từ WebGIS hoặc PWA.',
+              'Đồng bộ thuộc tính reported từ Orion-LD, khử trùng lặp cảnh báo theo SHA-256 và khóa lô hold_mkt khi vượt MKT.',
           }
         : {
-            role: 'Digital Twin reported/desired state and WMS lot store',
-            packageOrPort: 'digital-twin.js · latticeStockLots',
-            protocol: 'PG16 FORCE RLS · app.current_org',
-            payloadOrSchema: 'desiredPatch: targetTempC, maxTempC, minTempC, defrostMode, fanMode, doorLock',
+            role: 'Digital Twin shadow state, SHA-256 alarms & hold_mkt',
+            packageOrPort: 'broker-control.js · digital-twin.js · alarm-engine.js',
+            protocol: 'POST :orionNotify · PG16 FORCE RLS',
+            payloadOrSchema: 'latticeTwinShadows · latticeIncidentCases · hold_mkt',
             responsibilities:
-              'Stores shadow states, applies hold_mkt quarantine to breached stock lots, and validates desiredPatch mutations from WebGIS or mobile PWA.',
+              'Updates reported twin shadow state from :orionNotify, deduplicates alerts by SHA-256, and quarantines breached lots as hold_mkt.',
           },
     },
     {
-      id: 'alarm_engine',
-      title: isVi ? 'Cảnh báo & Sự cố' : 'Alarm & Incident',
-      sub: 'SHA-256 fingerprint',
+      id: 'webgis_ops',
+      title: isVi ? 'WebGIS & Cảnh báo' : 'WebGIS & Incident SLA',
+      sub: 'holdLotByMkt · MapLibre',
       icon: 'bell',
-      x: 456,
-      y: 224,
-      width: 168,
+      x: 868,
+      y: 60,
+      width: 204,
       height: 64,
-      zoneId: 'context-plane',
+      zoneId: 'control-plane',
       inspector: isVi
         ? {
-            role: 'Khử trùng lặp cảnh báo quá nhiệt và mất kết nối LWT',
-            packageOrPort: 'alarm-engine.js · latticeIncidentCases',
-            protocol: 'POST dxosBlocks:alarmIngest · SLA',
-            payloadOrSchema: 'sha256(orgId|assetEntityId|ruleCode|attribute)',
+            role: 'Hiển thị bản đồ WebGIS, giữ lô WMS & leo thang SLA',
+            packageOrPort: 'DxosWebGisBlockModel · dxosWms:holdLotByMkt',
+            protocol: 'SSE surfaceEvents · SLA Escalation',
+            payloadOrSchema: 'latticeStockLots (hold_mkt) · latticeSlaPolicies',
             responsibilities:
-              'Gộp sự cố trùng lặp theo fingerprint SHA-256, gắn mức độ nghiêm trọng và kích hoạt chính sách leo thang SLA.',
+              'Cập nhật trạng thái thiết bị theo thời gian thực trên WebGIS, khóa phân bổ FEFO cho lô quá nhiệt và thông báo vận hành.',
           }
         : {
-            role: 'Deduplicated excursion and offline incident engine',
-            packageOrPort: 'alarm-engine.js · latticeIncidentCases',
-            protocol: 'POST dxosBlocks:alarmIngest · SLA',
-            payloadOrSchema: 'sha256(orgId|assetEntityId|ruleCode|attribute)',
+            role: 'Live WebGIS telemetry view, WMS lot hold & SLA alerts',
+            packageOrPort: 'DxosWebGisBlockModel · dxosWms:holdLotByMkt',
+            protocol: 'SSE surfaceEvents · SLA Escalation',
+            payloadOrSchema: 'latticeStockLots (hold_mkt) · latticeSlaPolicies',
             responsibilities:
-              'Deduplicates thermal excursions and LWT disconnects by SHA-256 fingerprint and triggers latticeSlaPolicies escalations.',
+              'Visualizes twin health on MapLibre WebGIS, blocks FEFO allocation via hold_mkt, and dispatches SLA escalation alerts.',
           },
     },
     {
@@ -250,9 +271,9 @@ const modes = computed<DiagramMode[]>(() => {
       title: isVi ? 'Cổng HITL 2.0 °C' : 'HITL Delta Guard',
       sub: '|ΔT| > 2.0 °C -> hold',
       icon: 'shield',
-      x: 672,
-      y: 60,
-      width: 176,
+      x: 868,
+      y: 244,
+      width: 204,
       height: 64,
       zoneId: 'control-plane',
       focal: true,
@@ -263,7 +284,7 @@ const modes = computed<DiagramMode[]>(() => {
             protocol: 'HITL_TEMP_THRESHOLD_C = 2.0',
             payloadOrSchema: '|desiredPatch.targetTempC - baselineTemp| > 2.0 -> pending_hitl',
             responsibilities:
-              'Chặn gửi lệnh xuống thiết bị nếu biên độ đổi targetTempC vượt quá 2.0 °C mà chưa có hitlApproved=true; tạo đề xuất dxos_twin_set_desired.',
+              'Chặn gửi lệnh xuống Node-RED nếu biên độ đổi targetTempC vượt quá 2.0 °C mà chưa có hitlApproved=true.',
           }
         : {
             role: 'Safety interlock gating large setpoint shifts',
@@ -271,105 +292,135 @@ const modes = computed<DiagramMode[]>(() => {
             protocol: 'HITL_TEMP_THRESHOLD_C = 2.0',
             payloadOrSchema: '|desiredPatch.targetTempC - baselineTemp| > 2.0 -> pending_hitl',
             responsibilities:
-              'Pauses setpoint changes exceeding 2.0 °C from baseline as pending_hitl and queues a dxos_twin_set_desired approval proposal.',
-          },
-    },
-    {
-      id: 'nodered',
-      title: isVi ? 'Node-RED Downlink' : 'Node-RED Downlink',
-      sub: ':1880 · /twin/command',
-      icon: 'workflow',
-      x: 672,
-      y: 224,
-      width: 176,
-      height: 64,
-      zoneId: 'control-plane',
-      inspector: isVi
-        ? {
-            role: 'Cầu nối điều phối lệnh xuống MQTT QoS 1 và thu ack/LWT',
-            packageOrPort: 'nodered/node-red:4.0.9 · :1880 (flows.json)',
-            protocol: 'HTTP POST + X-Lattice-Edge-Token (>=16 chars)',
-            payloadOrSchema: 'POST /twin/command -> latticedx/<org>/<asset>/command',
-            responsibilities:
-              'Xác thực token biên, phát hành lệnh MQTT QoS 1 xuống thiết bị qua tài khoản nodered_bridge và chuyển tiếp gói ack về dxosBlocks:twinAckCommand.',
-          }
-        : {
-            role: 'IIoT downlink bridge and LWT/ack forwarder',
-            packageOrPort: 'nodered/node-red:4.0.9 · :1880 (flows.json)',
-            protocol: 'HTTP POST + X-Lattice-Edge-Token (>=16 chars)',
-            payloadOrSchema: 'POST /twin/command -> latticedx/<org>/<asset>/command',
-            responsibilities:
-              'Validates DX_NODERED_COMMAND_URL requests, publishes QoS 1 commands over Mosquitto, and relays device acks to dxosBlocks:twinAckCommand.',
+              'Pauses setpoint changes exceeding 2.0 °C from baseline as pending_hitl until operator approval before Node-RED dispatch.',
           },
     },
   ];
 
   const twinEdges: DiagramEdge[] = [
-    { id: 't1', from: 'edge_sensors', to: 'mosquitto', label: 'MQTT QoS1', kind: 'primary' },
+    {
+      id: 't1',
+      from: 'edge_sensors',
+      to: 'mosquitto',
+      label: 'MQTT QoS 1',
+      kind: 'primary',
+      points: [
+        [84, 124],
+        [84, 244],
+      ],
+    },
     {
       id: 't2',
       from: 'mosquitto',
-      to: 'orion_ld',
-      label: 'NGSI-LD',
+      to: 'nodered',
+      label: 'MQTT Sub',
       kind: 'primary',
       points: [
-        [148, 224],
-        [148, 176],
-        [268, 176],
-        [268, 124],
+        [228, 260],
+        [304, 260],
       ],
     },
-    { id: 't3', from: 'orion_ld', to: 'mkt_engine', label: 'Notify', kind: 'primary' },
+    {
+      id: 't3',
+      from: 'nodered',
+      to: 'noco_mkt_outbox',
+      label: ':telemetryIngest',
+      kind: 'primary',
+      points: [
+        [356, 244],
+        [356, 124],
+      ],
+    },
     {
       id: 't4',
-      from: 'mkt_engine',
-      to: 'twin_shadow',
-      label: 'MKT',
-      kind: 'flow',
+      from: 'noco_mkt_outbox',
+      to: 'orion_ld',
+      label: '10s Outbox',
+      kind: 'primary',
       points: [
-        [516, 124],
-        [516, 168],
-        [356, 168],
-        [356, 224],
+        [516, 92],
+        [600, 92],
       ],
     },
     {
       id: 't5',
-      from: 'mkt_engine',
-      to: 'alarm_engine',
-      label: 'Excursion',
+      from: 'orion_ld',
+      to: 'twin_shadow',
+      label: ':orionNotify',
       kind: 'flow',
       points: [
-        [564, 124],
-        [564, 224],
+        [696, 124],
+        [696, 244],
       ],
     },
     {
       id: 't6',
       from: 'twin_shadow',
-      to: 'hitl_guard',
-      label: 'ΔT <= 2.0C',
-      kind: 'primary',
+      to: 'webgis_ops',
+      label: 'hold_mkt',
+      kind: 'flow',
       points: [
-        [332, 288],
-        [332, 304],
-        [648, 304],
-        [648, 92],
-        [672, 92],
+        [784, 260],
+        [826, 260],
+        [826, 92],
+        [868, 92],
       ],
     },
-    { id: 't7', from: 'hitl_guard', to: 'nodered', label: 'Command', kind: 'primary' },
+    {
+      id: 't7',
+      from: 'twin_shadow',
+      to: 'hitl_guard',
+      label: '|ΔT|>2.0C',
+      kind: 'primary',
+      points: [
+        [784, 292],
+        [868, 292],
+      ],
+    },
     {
       id: 't8',
+      from: 'hitl_guard',
+      to: 'nodered',
+      label: '/twin/command',
+      kind: 'primary',
+      points: [
+        [970, 308],
+        [970, 352],
+        [416, 352],
+        [416, 308],
+      ],
+    },
+    {
+      id: 't9',
       from: 'nodered',
       to: 'mosquitto',
-      label: 'QoS1 Ack/LWT',
+      label: 'command',
+      kind: 'flow',
+      points: [
+        [304, 294],
+        [228, 294],
+      ],
+    },
+    {
+      id: 't10',
+      from: 'mosquitto',
+      to: 'edge_sensors',
+      label: 'cmd / ack',
       kind: 'dashed',
       points: [
-        [760, 288],
-        [760, 336],
-        [116, 336],
-        [116, 288],
+        [180, 244],
+        [180, 124],
+      ],
+    },
+    {
+      id: 't11',
+      from: 'nodered',
+      to: 'noco_mkt_outbox',
+      label: ':twinAck',
+      kind: 'dashed',
+      points: [
+        [476, 244],
+        [476, 124],
       ],
     },
   ];
@@ -377,73 +428,82 @@ const modes = computed<DiagramMode[]>(() => {
   const twinSteps: DiagramStep[] = [
     {
       id: 'tw-s1',
-      title: isVi ? 'Telemetry biên -> Orion-LD' : 'Edge Telemetry -> Orion-LD',
-      activeNodes: ['edge_sensors', 'mosquitto', 'orion_ld'],
-      activeEdges: ['t1', 't2'],
+      title: isVi ? 'Uplink MQTT -> Node-RED -> :telemetryIngest' : 'Uplink MQTT -> Node-RED -> :telemetryIngest',
+      activeNodes: ['edge_sensors', 'mosquitto', 'nodered', 'noco_mkt_outbox'],
+      activeEdges: ['t1', 't2', 't3'],
       description: isVi
-        ? 'Cảm biến gửi bản tin QoS 1 qua Mosquitto DynSec để cập nhật thực thể urn:ngsi-ld:Asset:<orgId>:native:<assetId> trong FIWARE Orion-LD.'
-        : 'Field sensors publish QoS 1 telemetry through Mosquitto DynSec into multi-tenant FIWARE Orion-LD NGSI-LD entities.',
-      route: 'POST /api/dxosBroker:orionNotify',
-      payload: 'NGSILD-Tenant: <orgId> | throttle: 5s',
-      chips: ['MQTT QoS 1', 'NGSI-LD'],
+        ? 'Cảm biến phát MQTT QoS 1 vào Mosquitto DynSec; Node-RED đăng ký chủ đề và POST về NocoBase :telemetryIngest kèm tính Arrhenius MKT.'
+        : 'Sensors publish QoS 1 telemetry to Mosquitto DynSec; Node-RED consumes it and POSTs sanitized readings to NocoBase :telemetryIngest.',
+      route: 'MQTT :1883 -> Node-RED :1880 -> POST /api/dxosBlocks:telemetryIngest',
+      payload: 'X-Lattice-Edge-Token | R=0.008314472, ΔH=83.14472',
+      chips: ['No Direct Mosquitto->Orion Shortcut', 'Arrhenius MKT'],
     },
     {
       id: 'tw-s2',
-      title: isVi ? 'Động cơ Arrhenius MKT & hold_mkt' : 'Arrhenius MKT & Quarantine',
-      activeNodes: ['orion_ld', 'mkt_engine', 'twin_shadow', 'alarm_engine'],
-      activeEdges: ['t3', 't4', 't5'],
+      title: isVi ? 'Context Outbox 10s -> Orion-LD -> :orionNotify' : '10s Context Outbox -> Orion-LD -> :orionNotify',
+      activeNodes: ['noco_mkt_outbox', 'orion_ld', 'twin_shadow', 'webgis_ops'],
+      activeEdges: ['t4', 't5', 't6'],
       description: isVi
-        ? 'Động cơ MKT dùng R=0.008314472 và ΔH=83.14472 để tính mktCelsius; nếu vượt ngưỡng, lô hàng tự động chuyển hold_mkt và mở sự cố.'
-        : 'The MKT engine computes mktCelsius with R=0.008314472 and deltaH=83.14472; breaches auto-hold lots as hold_mkt and raise deduplicated incidents.',
-      route: 'POST /api/dxosWms:holdLotByMkt',
-      payload: 'R=0.008314472 | ΔH=83.14472 | T_K=T_C+273.15',
-      chips: ['ICH Q1A', 'hold_mkt'],
+        ? 'latticeContextOutbox đồng bộ thực thể NGSI-LD sang Orion-LD mỗi 10 giây; Orion-LD gọi :orionNotify cập nhật Twin Shadow, cảnh báo và hold_mkt.'
+        : 'The 10s PG16 Context Outbox syncs NGSI-LD entities to Orion-LD, which fires :orionNotify back to Twin Shadow, Alarm Engine, and hold_mkt.',
+      route: 'POST /api/dxosBroker:orionNotify -> dxosWms:holdLotByMkt',
+      payload: 'NGSILD-Tenant: <orgId> | throttle: 5s',
+      chips: ['NGSI-LD Outbox', 'hold_mkt'],
     },
     {
       id: 'tw-s3',
-      title: isVi ? 'Cổng an toàn HITL (2.0 °C)' : 'HITL Delta Guard (2.0 °C)',
+      title: isVi ? 'Cổng an toàn HITL (|ΔT| > 2.0 °C)' : 'HITL Delta Guard (|ΔT| > 2.0 °C)',
       activeNodes: ['twin_shadow', 'hitl_guard'],
-      activeEdges: ['t6'],
+      activeEdges: ['t7'],
       description: isVi
-        ? 'Khi chỉnh targetTempC chênh quá 2.0 °C so với baseline, lệnh tạm dừng ở trạng thái pending_hitl chờ phê duyệt trước khi xuống thiết bị.'
-        : 'Setpoint changes where |targetTempC - baselineTemp| > 2.0 °C pause as pending_hitl until hitlApproved=true.',
+        ? 'Thay đổi targetTempC vượt 2.0 °C so với baseline bị giữ ở pending_hitl chờ người vận hành duyệt trước khi xuất lệnh xuống Node-RED.'
+        : 'Desired setpoint changes with |ΔT| > 2.0 °C pause as pending_hitl until approved before any downlink command is dispatched.',
       route: 'POST /api/dxosBlocks:twinSetDesired',
       payload: 'HITL_TEMP_THRESHOLD_C = 2.0',
       chips: ['pending_hitl', 'Safe Guard'],
     },
     {
       id: 'tw-s4',
-      title: isVi ? 'Lệnh xuống Node-RED & phản hồi ack' : 'Node-RED Downlink & Ack',
-      activeNodes: ['hitl_guard', 'nodered', 'mosquitto', 'edge_sensors'],
-      activeEdges: ['t7', 't8', 't1'],
+      title: isVi ? 'Downlink /twin/command & Phản hồi :twinAckCommand' : 'Downlink /twin/command & :twinAckCommand',
+      activeNodes: ['hitl_guard', 'nodered', 'mosquitto', 'edge_sensors', 'noco_mkt_outbox'],
+      activeEdges: ['t8', 't9', 't10', 't11'],
       description: isVi
-        ? 'Node-RED xác thực X-Lattice-Edge-Token, phát lệnh MQTT .../command xuống thiết bị và chuyển tiếp bản tin ack/LWT về hệ thống.'
-        : 'Node-RED validates X-Lattice-Edge-Token, publishes MQTT .../command downstream, and relays device ack and LWT updates.',
-      route: 'POST /api/dxosBlocks:twinAckCommand',
-      payload: 'latticedx/<orgId>/<assetKey>/command',
-      chips: ['2-Way Twin', 'X-Lattice-Edge-Token'],
+        ? 'Node-RED nhận /twin/command, phát MQTT .../command xuống thiết bị, rồi chuyển tiếp gói .../ack quay lại NocoBase :twinAckCommand.'
+        : 'Node-RED posts /twin/command over Mosquitto .../command to Edge Sensors and relays device .../ack back to :twinAckCommand.',
+      route: 'POST /twin/command -> Mosquitto -> POST /api/dxosBlocks:twinAckCommand',
+      payload: 'latticedx/<org>/<asset>/command & .../ack',
+      chips: ['2-Way Twin', 'Ack Verified'],
     },
   ];
 
-  // Mode 2: DynSec Provisioning, LWT & SSRF Boundaries
+  // Mode 2: DynSec Provisioning, LWT (Inbound) & SSRF Allowlists (Outbound)
   const dynZones: DiagramZone[] = [
     {
       id: 'dynsec-ctrl',
       label: isVi ? 'Cấp phát Mosquitto Dynamic Security ($CONTROL)' : 'Mosquitto Dynamic Security ($CONTROL)',
       x: 16,
       y: 16,
-      width: 848,
-      height: 152,
+      width: 1088,
+      height: 148,
       kind: 'admin',
     },
     {
-      id: 'lwt-ssrf',
-      label: isVi ? 'Giám sát LWT Birth/Death & Kiểm soát SSRF' : 'LWT Presence & SSRF Allowlists',
+      id: 'lwt-inbound',
+      label: isVi ? 'Luồng Vào: Giám sát LWT -> latticeIotDevices' : 'Inbound: LWT Presence -> latticeIotDevices',
       x: 16,
-      y: 184,
-      width: 848,
-      height: 176,
+      y: 188,
+      width: 752,
+      height: 192,
       kind: 'traffic',
+    },
+    {
+      id: 'ssrf-outbound',
+      label: isVi ? 'Luồng Ra: Kiểm soát SSRF Outbound' : 'Outbound: SSRF Host Allowlists',
+      x: 784,
+      y: 188,
+      width: 320,
+      height: 192,
+      kind: 'external',
     },
   ];
 
@@ -453,9 +513,9 @@ const modes = computed<DiagramMode[]>(() => {
       title: isVi ? 'Cấp phát Thiết bị' : 'Provision Device',
       sub: ':provisionDevice',
       icon: 'key',
-      x: 48,
-      y: 68,
-      width: 184,
+      x: 36,
+      y: 64,
+      width: 204,
       height: 64,
       zoneId: 'dynsec-ctrl',
       focal: true,
@@ -482,9 +542,9 @@ const modes = computed<DiagramMode[]>(() => {
       title: isVi ? 'ACL Tối thiểu' : 'Scoped DynSec ACL',
       sub: 'default deny · per-topic',
       icon: 'lock',
-      x: 348,
-      y: 68,
-      width: 184,
+      x: 428,
+      y: 64,
+      width: 204,
       height: 64,
       zoneId: 'dynsec-ctrl',
       focal: true,
@@ -511,9 +571,9 @@ const modes = computed<DiagramMode[]>(() => {
       title: isVi ? 'Vai trò Cầu nối' : 'Bridge Role',
       sub: 'nodered-bridge · #',
       icon: 'plug',
-      x: 648,
-      y: 68,
-      width: 184,
+      x: 820,
+      y: 64,
+      width: 224,
       height: 64,
       zoneId: 'dynsec-ctrl',
       inspector: isVi
@@ -537,13 +597,13 @@ const modes = computed<DiagramMode[]>(() => {
     {
       id: 'lwt_watcher',
       title: isVi ? 'Giám sát LWT' : 'LWT Presence',
-      sub: 'BIRTH | DEATH -> QoS 1',
+      sub: 'BIRTH | DEATH · QoS 1',
       icon: 'radio',
-      x: 48,
-      y: 236,
-      width: 184,
+      x: 32,
+      y: 248,
+      width: 192,
       height: 64,
-      zoneId: 'lwt-ssrf',
+      zoneId: 'lwt-inbound',
       inspector: isVi
         ? {
             role: 'Chuẩn hóa trạng thái trực tuyến và ngoại tuyến đột ngột từ LWT',
@@ -567,62 +627,139 @@ const modes = computed<DiagramMode[]>(() => {
       title: isVi ? 'Cập nhật Trạng thái' : 'Status Ingest',
       sub: ':deviceStatusIngest',
       icon: 'bell',
-      x: 348,
-      y: 236,
-      width: 184,
+      x: 320,
+      y: 248,
+      width: 176,
       height: 64,
-      zoneId: 'lwt-ssrf',
+      zoneId: 'lwt-inbound',
       inspector: isVi
         ? {
-            role: 'Endpoint tiếp nhận trạng thái thiết bị từ cầu nối biên',
-            packageOrPort: 'broker-control.js · latticeIotDevices',
+            role: 'Endpoint tiếp nhận trạng thái thiết bị từ cầu nối biên (chỉ chiều vào)',
+            packageOrPort: 'broker-control.js:1509-1580',
             protocol: 'POST /api/dxosBroker:deviceStatusIngest',
             payloadOrSchema: 'Header X-Lattice-Edge-Token (>= 16 chars)',
             responsibilities:
-              'Xác thực Edge Token bằng so sánh hằng thời gian và cập nhật trạng thái thiết bị trong latticeIotDevices.',
+              'Xác thực Edge Token bằng so sánh hằng thời gian và ghi trực tiếp vào bảng thiết bị; không gọi kiểm tra SSRF outbound.',
           }
         : {
-            role: 'Edge-authenticated device presence ingest endpoint',
-            packageOrPort: 'broker-control.js · latticeIotDevices',
+            role: 'Edge-authenticated inbound device presence endpoint',
+            packageOrPort: 'broker-control.js:1509-1580',
             protocol: 'POST /api/dxosBroker:deviceStatusIngest',
             payloadOrSchema: 'Header X-Lattice-Edge-Token (>= 16 chars)',
             responsibilities:
-              'Validates X-Lattice-Edge-Token (>= 16 chars) and updates online/offline presence in latticeIotDevices.',
+              'Validates X-Lattice-Edge-Token in constant time and updates device state directly; never invokes outbound SSRF allowlists.',
+          },
+    },
+    {
+      id: 'iot_devices_db',
+      title: 'latticeIotDevices',
+      sub: 'PG16 RLS · Incident',
+      icon: 'database',
+      x: 576,
+      y: 248,
+      width: 180,
+      height: 64,
+      zoneId: 'lwt-inbound',
+      inspector: isVi
+        ? {
+            role: 'Lưu trạng thái hiện diện thiết bị và mở sự cố mất kết nối LWT',
+            packageOrPort: 'latticeIotDevices · latticeIncidentCases',
+            protocol: 'PG16 FORCE RLS · app.current_org',
+            payloadOrSchema: 'MQTT-LWT-OFFLINE incident on unexpected disconnect',
+            responsibilities:
+              'Cập nhật lastSeenAt/status và tự động tạo sự cố MQTT-LWT-OFFLINE trong latticeIncidentCases khi thiết bị rớt LWT.',
+          }
+        : {
+            role: 'Persists device presence and raises LWT offline incidents',
+            packageOrPort: 'latticeIotDevices · latticeIncidentCases',
+            protocol: 'PG16 FORCE RLS · app.current_org',
+            payloadOrSchema: 'MQTT-LWT-OFFLINE incident on unexpected disconnect',
+            responsibilities:
+              'Records online/offline presence in latticeIotDevices and raises MQTT-LWT-OFFLINE incidents on unexpected disconnects.',
+          },
+    },
+    {
+      id: 'nocobase_outbound',
+      title: isVi ? 'NocoBase Outbound' : 'NocoBase Outbound',
+      sub: 'dxosBroker · digital-twin',
+      icon: 'server',
+      x: 800,
+      y: 220,
+      width: 288,
+      height: 56,
+      zoneId: 'ssrf-outbound',
+      inspector: isVi
+        ? {
+            role: 'Các lời gọi HTTP hướng ra từ NocoBase tới Orion-LD và Node-RED',
+            packageOrPort: 'broker-control.js · digital-twin.js',
+            protocol: 'Outbound HTTP(S) · DNS Validation',
+            payloadOrSchema: 'Orion-LD Entity Upsert | Node-RED /twin/command',
+            responsibilities:
+              'Mọi yêu cầu mạng hướng ra từ NocoBase đều phải qua danh sách trắng tên miền nội bộ trước khi mở kết nối.',
+          }
+        : {
+            role: 'Outbound NocoBase calls toward Orion-LD and Node-RED',
+            packageOrPort: 'broker-control.js · digital-twin.js',
+            protocol: 'Outbound HTTP(S) · DNS Validation',
+            payloadOrSchema: 'Orion-LD Entity Upsert | Node-RED /twin/command',
+            responsibilities:
+              'Every outbound HTTP request from NocoBase to IIoT infrastructure passes through explicit host allowlist validation.',
           },
     },
     {
       id: 'ssrf_allowlist',
-      title: isVi ? 'Khóa SSRF IIoT' : 'SSRF Allowlists',
-      sub: 'DX_ORION & NODERED',
+      title: isVi ? 'Khóa SSRF Outbound' : 'SSRF Host Allowlists',
+      sub: 'Orion-LD & Node-RED',
       icon: 'shield',
-      x: 648,
-      y: 236,
-      width: 184,
-      height: 64,
-      zoneId: 'lwt-ssrf',
+      x: 800,
+      y: 312,
+      width: 288,
+      height: 56,
+      zoneId: 'ssrf-outbound',
+      focal: true,
       inspector: isVi
         ? {
-            role: 'Danh sách tên miền nội bộ được phép cho Orion-LD và Node-RED',
-            packageOrPort: 'broker-control.js · native-context-delivery.js',
+            role: 'Danh sách tên miền được phép cho Orion-LD và Node-RED (chỉ chiều ra)',
+            packageOrPort: 'DX_ORION_HOST_ALLOWLIST · DX_NODERED_HOST_ALLOWLIST',
             protocol: 'DNS + Host Allowlist Check',
-            payloadOrSchema: 'DX_ORION_HOST_ALLOWLIST | DX_ORION_CALLBACK_HOST_ALLOWLIST | DX_NODERED_HOST_ALLOWLIST',
+            payloadOrSchema: 'Orion-LD (:1026) | Orion Callback | Node-RED (:1880)',
             responsibilities:
-              'Chặn địa chỉ loopback, nội bộ riêng tư hoặc metadata đám mây ngoài danh sách trắng khi đăng ký callback Orion-LD hoặc gọi Node-RED.',
+              'Chặn địa chỉ loopback, nội bộ trái phép hoặc metadata đám mây ngoài danh sách trắng khi NocoBase gọi Orion-LD hoặc Node-RED.',
           }
         : {
-            role: 'Host allowlist defense against IIoT SSRF callbacks',
-            packageOrPort: 'broker-control.js · native-context-delivery.js',
+            role: 'Host allowlist defense for outbound Orion-LD & Node-RED calls',
+            packageOrPort: 'DX_ORION_HOST_ALLOWLIST · DX_NODERED_HOST_ALLOWLIST',
             protocol: 'DNS + Host Allowlist Check',
-            payloadOrSchema: 'DX_ORION_HOST_ALLOWLIST | DX_ORION_CALLBACK_HOST_ALLOWLIST | DX_NODERED_HOST_ALLOWLIST',
+            payloadOrSchema: 'Orion-LD (:1026) | Orion Callback | Node-RED (:1880)',
             responsibilities:
-              'Restricts Orion-LD callbacks and Node-RED downlink targets exclusively to explicitly allowlisted internal IIoT hosts.',
+              'Restricts outbound Orion-LD queries, subscription callbacks, and Node-RED downlink targets exclusively to allowlisted hosts.',
           },
     },
   ];
 
   const dynEdges: DiagramEdge[] = [
-    { id: 'd1', from: 'provision_api', to: 'dynsec_broker', label: '$CONTROL', kind: 'primary' },
-    { id: 'd2', from: 'dynsec_broker', to: 'nodered_bridge', label: 'Sub #', kind: 'flow' },
+    {
+      id: 'd1',
+      from: 'provision_api',
+      to: 'dynsec_broker',
+      label: '$CONTROL',
+      kind: 'primary',
+      points: [
+        [240, 96],
+        [428, 96],
+      ],
+    },
+    {
+      id: 'd2',
+      from: 'dynsec_broker',
+      to: 'nodered_bridge',
+      label: 'Sub #',
+      kind: 'flow',
+      points: [
+        [632, 96],
+        [820, 96],
+      ],
+    },
     {
       id: 'd3',
       from: 'nodered_bridge',
@@ -630,14 +767,45 @@ const modes = computed<DiagramMode[]>(() => {
       label: 'Status Topic',
       kind: 'flow',
       points: [
-        [740, 132],
-        [740, 164],
-        [140, 164],
-        [140, 236],
+        [932, 128],
+        [932, 160],
+        [120, 160],
+        [120, 248],
       ],
     },
-    { id: 'd4', from: 'lwt_watcher', to: 'status_ingest', label: 'BIRTH/DEATH', kind: 'primary' },
-    { id: 'd5', from: 'status_ingest', to: 'ssrf_allowlist', label: 'Verify', kind: 'dashed' },
+    {
+      id: 'd4',
+      from: 'lwt_watcher',
+      to: 'status_ingest',
+      label: 'BIRTH/DEATH',
+      kind: 'primary',
+      points: [
+        [224, 280],
+        [320, 280],
+      ],
+    },
+    {
+      id: 'd5',
+      from: 'status_ingest',
+      to: 'iot_devices_db',
+      label: 'Write RLS',
+      kind: 'primary',
+      points: [
+        [496, 280],
+        [576, 280],
+      ],
+    },
+    {
+      id: 'd6',
+      from: 'nocobase_outbound',
+      to: 'ssrf_allowlist',
+      label: 'Allowlist',
+      kind: 'dashed',
+      points: [
+        [944, 276],
+        [944, 312],
+      ],
+    },
   ];
 
   const dynSteps: DiagramStep[] = [
@@ -655,15 +823,27 @@ const modes = computed<DiagramMode[]>(() => {
     },
     {
       id: 'dyn-s2',
-      title: isVi ? 'Phát hiện mất kết nối LWT & khóa SSRF' : 'LWT Presence & SSRF Allowlist',
-      activeNodes: ['lwt_watcher', 'status_ingest', 'ssrf_allowlist'],
+      title: isVi ? 'Luồng vào: LWT -> :deviceStatusIngest -> latticeIotDevices' : 'Inbound: LWT -> :deviceStatusIngest -> latticeIotDevices',
+      activeNodes: ['lwt_watcher', 'status_ingest', 'iot_devices_db'],
       activeEdges: ['d3', 'd4', 'd5'],
       description: isVi
-        ? 'Node-RED chuyển đổi gói LWT DEATH thành offline (mqtt_lwt_disconnect) tới :deviceStatusIngest kèm X-Lattice-Edge-Token và kiểm tra SSRF.'
-        : 'Node-RED normalizes LWT DEATH packets to offline (mqtt_lwt_disconnect) at :deviceStatusIngest using X-Lattice-Edge-Token and SSRF host guards.',
+        ? 'Node-RED chuyển gói LWT DEATH thành offline tới :deviceStatusIngest (xác thực X-Lattice-Edge-Token) và ghi trực tiếp vào latticeIotDevices.'
+        : 'Node-RED posts LWT BIRTH/DEATH presence to :deviceStatusIngest (verified by X-Lattice-Edge-Token) and writes directly to latticeIotDevices.',
       route: 'POST /api/dxosBroker:deviceStatusIngest',
-      payload: 'reason: "mqtt_lwt_disconnect"',
-      chips: ['LWT QoS 1', 'SSRF Guard'],
+      payload: 'reason: "mqtt_lwt_disconnect" -> MQTT-LWT-OFFLINE',
+      chips: ['Inbound Only', 'LWT QoS 1'],
+    },
+    {
+      id: 'dyn-s3',
+      title: isVi ? 'Luồng ra: Kiểm soát SSRF tới Orion-LD / Node-RED' : 'Outbound: SSRF Host Allowlists for Orion-LD / Node-RED',
+      activeNodes: ['nocobase_outbound', 'ssrf_allowlist'],
+      activeEdges: ['d6'],
+      description: isVi
+        ? 'Riêng các kết nối hướng ra từ NocoBase tới Orion-LD và Node-RED phải đi qua kiểm tra DNS + DX_ORION_HOST_ALLOWLIST / DX_NODERED_HOST_ALLOWLIST.'
+        : 'Separately from inbound status ingest, outbound NocoBase calls to Orion-LD and Node-RED enforce DNS + SSRF host allowlists.',
+      route: 'DX_ORION_HOST_ALLOWLIST & DX_NODERED_HOST_ALLOWLIST',
+      payload: 'Blocks loopback, private IPs & cloud metadata',
+      chips: ['Outbound SSRF Guard'],
     },
   ];
 
@@ -671,7 +851,7 @@ const modes = computed<DiagramMode[]>(() => {
     {
       id: 'telemetry-twin',
       label: isVi ? 'Digital Twin & MKT' : 'Digital Twin & MKT',
-      summary: isVi ? 'Orion-LD · Arrhenius MKT · HITL 2.0 °C' : 'Orion-LD · Arrhenius MKT · HITL 2.0 °C',
+      summary: isVi ? 'Node-RED -> Outbox -> Orion-LD · HITL 2.0 °C' : 'Node-RED -> Outbox -> Orion-LD · HITL 2.0 °C',
       zones: twinZones,
       nodes: twinNodes,
       edges: twinEdges,
@@ -679,8 +859,8 @@ const modes = computed<DiagramMode[]>(() => {
     },
     {
       id: 'dynsec-provisioning',
-      label: isVi ? 'DynSec & LWT' : 'DynSec & LWT',
-      summary: isVi ? 'ACL theo thiết bị · Presence · SSRF' : 'Per-device ACL · Presence · SSRF',
+      label: isVi ? 'DynSec, LWT & SSRF' : 'DynSec, LWT & SSRF',
+      summary: isVi ? 'Inbound LWT vs Outbound SSRF' : 'Inbound LWT vs Outbound SSRF',
       zones: dynZones,
       nodes: dynNodes,
       edges: dynEdges,
@@ -694,7 +874,7 @@ const modes = computed<DiagramMode[]>(() => {
   <DiagramCanvas
     :title="meta.title"
     :caption="meta.caption"
-    viewBox="0 0 880 376"
+    viewBox="0 0 1120 404"
     :modes="modes"
     :lang="resolvedLang"
   />

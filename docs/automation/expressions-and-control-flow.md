@@ -159,7 +159,7 @@ LatticeFlow v2 xử lý lỗi nút theo hướng tất định thay vì tự đ�
 | Giới hạn thời gian (`timeoutMs`) | `runSingleNode` chạy `Promise.race` theo `node.timeoutMs` hoặc `node.config.timeoutMs`. | Dừng nút với lỗi `FLOW_NODE_TIMEOUT` (`504`). |
 | Nhánh `error` và `errorPolicy` | Đẩy `{ error, output }` qua cạnh `error` nếu có; nếu không có cạnh `error`, chỉ chạy tiếp khi `continueOnFail` hoặc `errorPolicy === 'continue'`. | Đánh dấu nút `failed` và dừng hoặc tiếp tục nhánh khác. |
 | Tính trạng thái (`computeRunStatus`) | Tổng hợp `stepTracesJson`: không có lỗi trả `completed`, lẫn thành công và lỗi trả `partial`, lỗi toàn phần trả `failed`. | Ghi trạng thái cuối vào `latticeAutomationRuns`. |
-| Chạy lại (`replayRun`) | Đọc `triggerPayloadJson` (hoặc `latticeEventBus`), tăng `depth` thêm `1` và chạy lại trên rule hiện tại với `ignoreCooldown: true`. | Tạo bản ghi lượt chạy mới độc lập. *(Backoff hàm mũ áp dụng riêng cho `dxosEventBus`.)* |
+| Chạy lại (`replayRun`) | Đọc `triggerPayloadJson` (hoặc `latticeEventBus`), tăng `depth` thêm `1` và chạy lại trên rule hiện tại với `ignoreCooldown: true`. | Tạo bản ghi lượt chạy mới độc lập. *(Backoff hàm mũ áp dụng riêng cho `dxosEvents`.)* |
 
 ## Tài liệu liên quan
 

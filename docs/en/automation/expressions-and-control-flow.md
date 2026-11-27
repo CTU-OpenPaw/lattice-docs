@@ -159,7 +159,7 @@ LatticeFlow v2 handles node failures deterministically rather than retrying fail
 | Per-node timeout (`timeoutMs`) | `runSingleNode` races execution against `node.timeoutMs` or `node.config.timeoutMs`. | Fails the node with `FLOW_NODE_TIMEOUT` (`504`). |
 | `error` port & `errorPolicy` | Routes `{ error, output }` along outgoing `error` edges when present; otherwise halts unless `continueOnFail` or `errorPolicy === 'continue'`. | Marks the node `failed` and either routes or halts. |
 | Final status (`computeRunStatus`) | Summarizes `stepTracesJson`: zero failures yields `completed`, mixed success and failure yields `partial`, total failure yields `failed`. | Persisted onto `latticeAutomationRuns`. |
-| Run replay (`replayRun`) | Reconstructs `triggerPayloadJson` (or falls back to `latticeEventBus`), increments `depth` by `1`, and runs with `ignoreCooldown: true`. | Creates a fresh run record. *(Exponential backoff retries apply separately to `dxosEventBus`.)* |
+| Run replay (`replayRun`) | Reconstructs `triggerPayloadJson` (or falls back to `latticeEventBus`), increments `depth` by `1`, and runs with `ignoreCooldown: true`. | Creates a fresh run record. *(Exponential backoff retries apply separately to `dxosEvents`.)* |
 
 ## Related
 
