@@ -103,8 +103,6 @@ Local Compose stacks bind host ports strictly to `127.0.0.1` (leaving `postgres`
 
 The platform is maintained across four independent Pure-OSI repositories (`Apache-2.0`) separating runtime core code, bilingual documentation, curated GitOps templates, and organization governance.
 
-<EcosystemTopologyDiagram />
-
 | Repository | License | Technical Role | Link |
 | :--- | :--- | :--- | :--- |
 | **`CTU-OpenPaw/lattice-dx`** | `Apache-2.0` | Core platform `v0.4.2`: 7 `@latticedx/*` NocoBase plugins, Fastify `/v1/*` API, AI worker, `file-scanner` sidecar, Compose stacks, and PITR recovery scripts | [GitHub `lattice-dx`](https://github.com/CTU-OpenPaw/lattice-dx) |

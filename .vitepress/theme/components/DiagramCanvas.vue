@@ -3,7 +3,7 @@ SPDX-License-Identifier: Apache-2.0
 Copyright (C) 2026 CTU-OpenPaw
 -->
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
+import { computed, inject, ref, useId, watch } from 'vue';
 import { dataSymbol } from 'vitepress';
 import StrokeIcon from './StrokeIcon.vue';
 import type {
@@ -30,8 +30,7 @@ const props = withDefaults(
     lang?: DiagramLocale;
   }>(),
   {
-    viewBox: '0 0 880 440',
-    initialStep: 0,
+    viewBox: '0 0 960 400',
     compact: false,
   },
 );
@@ -49,44 +48,36 @@ const resolvedLang = computed<DiagramLocale>(() => {
 const labels = computed(() =>
   resolvedLang.value === 'vi'
     ? {
-        play: 'Phát',
-        pause: 'Tạm dừng',
-        prev: 'Trước',
-        next: 'Tiếp',
-        replay: 'Phát lại',
-        static: 'Tĩnh',
-        activeStep: 'Bước hiện tại',
-        selectedNode: 'Node đang chọn',
-        clearSelection: 'Bỏ chọn',
+        overview: 'Tổng quan',
+        stepPrefix: 'Bước',
+        selectedNode: 'Đang chọn',
+        inspectorBadge: 'Chi tiết khối',
+        inspectorHint: 'Nhấn vào từng khối để xem giao diện & trách nhiệm',
+        reset: 'Đặt lại',
         route: 'Tuyến',
-        payload: 'Payload',
         role: 'Vai trò',
         packageOrPort: 'Gói / Cổng',
         protocol: 'Giao thức',
         payloadOrSchema: 'Payload / Schema',
         responsibilities: 'Trách nhiệm',
-        diagramControls: 'Điều khiển sơ đồ',
         modeSelector: 'Chế độ hiển thị',
+        stepWalkthrough: 'Các bước thực thi',
       }
     : {
-        play: 'Play',
-        pause: 'Pause',
-        prev: 'Prev',
-        next: 'Next',
-        replay: 'Replay',
-        static: 'Static',
-        activeStep: 'Active Step',
-        selectedNode: 'Selected Node',
-        clearSelection: 'Reset',
+        overview: 'Overview',
+        stepPrefix: 'Step',
+        selectedNode: 'Selected',
+        inspectorBadge: 'Inspector',
+        inspectorHint: 'Click any component to inspect bindings & boundaries',
+        reset: 'Reset',
         route: 'Route',
-        payload: 'Payload',
         role: 'Role',
         packageOrPort: 'Package / Port',
         protocol: 'Protocol',
         payloadOrSchema: 'Payload / Schema',
         responsibilities: 'Responsibilities',
-        diagramControls: 'Diagram playback controls',
         modeSelector: 'Diagram view modes',
+        stepWalkthrough: 'Execution walkthrough',
       },
 );
 
@@ -94,16 +85,14 @@ const rawUid = useId();
 const uid = rawUid.replace(/[^a-zA-Z0-9_-]/g, '') || 'ldx';
 
 const arrowNeutralId = `ldx-arrow-neutral-${uid}`;
+const arrowMutedId = `ldx-arrow-muted-${uid}`;
 const arrowFlowId = `ldx-arrow-flow-${uid}`;
 const arrowAccentId = `ldx-arrow-accent-${uid}`;
+const arrowReturnId = `ldx-arrow-return-${uid}`;
 
 const activeModeIndex = ref(0);
-const activeStepIndex = ref(Math.max(0, props.initialStep));
+const selectedStepIndex = ref<number | null>(null);
 const selectedNodeId = ref<string | null>(null);
-const isPlaying = ref(false);
-const isMounted = ref(false);
-const prefersReducedMotion = ref(false);
-const animEpoch = ref(0);
 
 const hasModes = computed(() => Array.isArray(props.modes) && props.modes.length > 0);
 const activeMode = computed<DiagramMode | null>(() => {
@@ -111,47 +100,171 @@ const activeMode = computed<DiagramMode | null>(() => {
   return props.modes[activeModeIndex.value] ?? props.modes[0] ?? null;
 });
 
+const resolvedViewBox = computed(() => activeMode.value?.viewBox ?? props.viewBox ?? '0 0 960 400');
+
+const viewBoxDims = computed(() => {
+  const parts = resolvedViewBox.value
+    .trim()
+    .split(/\s+/)
+    .map((n) => Number(n));
+  const width = Number.isFinite(parts[2]) && parts[2] > 0 ? parts[2] : 960;
+  const height = Number.isFinite(parts[3]) && parts[3] > 0 ? parts[3] : 400;
+  return { width, height };
+});
+
+const mobileStageMinWidth = computed(() => `${Math.max(580, Math.round(viewBoxDims.value.width * 0.68))}px`);
+
 const currentZones = computed<DiagramZone[]>(() => activeMode.value?.zones ?? props.zones ?? []);
 const currentNodes = computed<DiagramNode[]>(() => activeMode.value?.nodes ?? props.nodes ?? []);
 const currentEdges = computed<DiagramEdge[]>(() => activeMode.value?.edges ?? props.edges ?? []);
 const currentSteps = computed<DiagramStep[]>(() => activeMode.value?.steps ?? props.steps ?? []);
 
 watch(
-  () => props.initialStep,
-  (val) => {
-    const maxIdx = Math.max(0, currentSteps.value.length - 1);
-    activeStepIndex.value = Math.min(Math.max(0, val ?? 0), maxIdx);
+  () => activeModeIndex.value,
+  () => {
+    selectedStepIndex.value = null;
+    selectedNodeId.value = null;
   },
 );
 
-const clampedStepIndex = computed(() => {
-  if (currentSteps.value.length === 0) return 0;
-  return Math.min(Math.max(0, activeStepIndex.value), currentSteps.value.length - 1);
-});
-
 const currentStep = computed<DiagramStep | null>(() => {
-  if (currentSteps.value.length === 0) return null;
-  return currentSteps.value[clampedStepIndex.value] ?? null;
+  if (selectedStepIndex.value === null) return null;
+  return currentSteps.value[selectedStepIndex.value] ?? null;
 });
 
-const stepCounterText = computed(() => {
-  const total = currentSteps.value.length;
-  if (total === 0) return '00 / 00';
-  const cur = String(clampedStepIndex.value + 1).padStart(2, '0');
-  const tot = String(total).padStart(2, '0');
-  return `${cur} / ${tot}`;
-});
-
-const nodeMap = computed(() => {
-  const map = new Map<string, DiagramNode>();
-  for (const node of currentNodes.value) {
-    map.set(node.id, node);
-  }
-  return map;
-});
+const isFiltering = computed(
+  () => selectedNodeId.value !== null || currentStep.value !== null,
+);
 
 const stepActiveNodeSet = computed(() => new Set(currentStep.value?.activeNodes ?? []));
 const stepActiveEdgeSet = computed(() => new Set(currentStep.value?.activeEdges ?? []));
+
+// Text wrapping utilities (zero <clipPath> truncation)
+function splitLongToken(token: string, maxChars: number): string[] {
+  if (token.length <= maxChars) return [token];
+  const parts: string[] = [];
+  let remaining = token;
+  while (remaining.length > maxChars) {
+    let splitAt = -1;
+    for (let i = Math.min(maxChars, remaining.length - 1); i >= Math.max(4, Math.floor(maxChars * 0.45)); i--) {
+      const ch = remaining[i];
+      if (ch === '/' || ch === '·' || ch === '_' || ch === '-' || ch === '.' || ch === ':') {
+        splitAt = i + 1;
+        break;
+      }
+    }
+    if (splitAt === -1) {
+      splitAt = maxChars;
+    }
+    parts.push(remaining.slice(0, splitAt));
+    remaining = remaining.slice(splitAt);
+  }
+  if (remaining) parts.push(remaining);
+  return parts;
+}
+
+function wrapLines(
+  input: string | string[] | undefined,
+  maxCharsPerLine: number,
+  maxLines: number,
+): string[] {
+  if (!input) return [];
+  const rawSegments = Array.isArray(input)
+    ? input.flatMap((line) => String(line).split('\n'))
+    : String(input).split('\n');
+
+  const lines: string[] = [];
+  for (const segment of rawSegments) {
+    const trimmed = segment.trim();
+    if (!trimmed) continue;
+    const words = trimmed.split(/\s+/);
+    let current = '';
+
+    for (const word of words) {
+      const chunks = splitLongToken(word, maxCharsPerLine);
+      for (const chunk of chunks) {
+        if (!current) {
+          current = chunk;
+        } else if (current.length + 1 + chunk.length <= maxCharsPerLine) {
+          current = `${current} ${chunk}`;
+        } else {
+          lines.push(current);
+          current = chunk;
+        }
+      }
+    }
+    if (current) lines.push(current);
+  }
+
+  if (lines.length <= maxLines) return lines;
+  const head = lines.slice(0, maxLines - 1);
+  const tail = lines.slice(maxLines - 1).join(' ');
+  return [...head, tail];
+}
+
+interface ComputedNode {
+  node: DiagramNode;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  titleLines: string[];
+  subLines: string[];
+  titleStartY: number;
+  subStartY: number;
+  iconY: number;
+  subText: string;
+}
+
+const TITLE_LINE_HEIGHT = 15;
+const SUB_LINE_HEIGHT = 13.5;
+const TITLE_SUB_GAP = 4;
+
+const computedNodes = computed<ComputedNode[]>(() => {
+  return currentNodes.value.map((node) => {
+    const w = node.width ?? 160;
+    const baseH = node.height ?? 64;
+    const textAvailW = Math.max(64, w - 46);
+    const maxTitleChars = Math.max(11, Math.floor(textAvailW / 7.6));
+    const maxSubChars = Math.max(13, Math.floor(textAvailW / 6.05));
+
+    const titleLines = wrapLines(node.title, maxTitleChars, 2);
+    const subLines = wrapLines(node.sub, maxSubChars, 3);
+
+    const titleBlockH = titleLines.length * TITLE_LINE_HEIGHT;
+    const subBlockH = subLines.length > 0 ? TITLE_SUB_GAP + subLines.length * SUB_LINE_HEIGHT : 0;
+    const totalTextH = titleBlockH + subBlockH;
+
+    const h = Math.max(baseH, Math.ceil(totalTextH + 16));
+    const topY = node.y + Math.round((h - totalTextH) / 2);
+    const titleStartY = topY + 11.5;
+    const subStartY = topY + titleBlockH + TITLE_SUB_GAP + 10;
+    const iconY = node.y + Math.round((h - 16) / 2);
+    const subText = Array.isArray(node.sub) ? node.sub.join(' · ') : (node.sub ?? '');
+
+    return {
+      node,
+      x: node.x,
+      y: node.y,
+      w,
+      h,
+      titleLines,
+      subLines,
+      titleStartY,
+      subStartY,
+      iconY,
+      subText,
+    };
+  });
+});
+
+const nodeMap = computed(() => {
+  const map = new Map<string, ComputedNode>();
+  for (const item of computedNodes.value) {
+    map.set(item.node.id, item);
+  }
+  return map;
+});
 
 function isNodeHighlighted(nodeId: string): boolean {
   if (selectedNodeId.value) {
@@ -165,11 +278,10 @@ function isNodeHighlighted(nodeId: string): boolean {
   if (currentStep.value) {
     return stepActiveNodeSet.value.has(nodeId);
   }
-  return Boolean(nodeMap.value.get(nodeId)?.focal);
+  return Boolean(nodeMap.value.get(nodeId)?.node.focal);
 }
 
 function isNodeDimmed(nodeId: string): boolean {
-  if (prefersReducedMotion.value) return false;
   if (selectedNodeId.value) {
     return !isNodeHighlighted(nodeId);
   }
@@ -186,17 +298,21 @@ function isEdgeActive(edge: DiagramEdge): boolean {
   if (currentStep.value) {
     return stepActiveEdgeSet.value.has(edge.id);
   }
-  return edge.kind === 'primary';
+  return true;
+}
+
+function isEdgeDimmed(edge: DiagramEdge): boolean {
+  return isFiltering.value && !isEdgeActive(edge);
 }
 
 const inspectedNode = computed<DiagramNode | null>(() => {
   if (selectedNodeId.value) {
     const found = nodeMap.value.get(selectedNodeId.value);
-    if (found) return found;
+    if (found) return found.node;
   }
   if (currentStep.value && currentStep.value.activeNodes.length > 0) {
     const activeList = currentStep.value.activeNodes
-      .map((id) => nodeMap.value.get(id))
+      .map((id) => nodeMap.value.get(id)?.node)
       .filter((n): n is DiagramNode => Boolean(n));
     const focalInStep = activeList.find((n) => n.focal);
     if (focalInStep) return focalInStep;
@@ -205,15 +321,6 @@ const inspectedNode = computed<DiagramNode | null>(() => {
   const anyFocal = currentNodes.value.find((n) => n.focal);
   return anyFocal ?? currentNodes.value[0] ?? null;
 });
-
-function getNodeBox(node: DiagramNode) {
-  return {
-    x: node.x,
-    y: node.y,
-    w: node.width ?? 160,
-    h: node.height ?? 64,
-  };
-}
 
 function buildRoundedOrthogonalPath(pts: Array<[number, number]>, radius = 6): string {
   if (pts.length === 0) return '';
@@ -254,9 +361,7 @@ function buildRoundedOrthogonalPath(pts: Array<[number, number]>, radius = 6): s
   return segments.join(' ');
 }
 
-function computeAutoEdgePoints(fromNode: DiagramNode, toNode: DiagramNode): Array<[number, number]> {
-  const from = getNodeBox(fromNode);
-  const to = getNodeBox(toNode);
+function computeAutoEdgePoints(from: ComputedNode, to: ComputedNode): Array<[number, number]> {
   const fx = from.x + from.w / 2;
   const fy = from.y + from.h / 2;
   const tx = to.x + to.w / 2;
@@ -307,22 +412,23 @@ function polylineLength(pts: Array<[number, number]>): number {
   return len;
 }
 
-function polylineMidpoint(pts: Array<[number, number]>): [number, number] {
+function polylinePointAt(pts: Array<[number, number]>, fraction = 0.5): [number, number] {
   if (pts.length === 0) return [0, 0];
   if (pts.length === 1) return pts[0];
   const total = polylineLength(pts);
   if (total === 0) return pts[0];
-  let half = total / 2;
+  const clampedFrac = Math.min(0.92, Math.max(0.08, fraction));
+  let target = total * clampedFrac;
   for (let i = 1; i < pts.length; i++) {
     const segLen = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-    if (half <= segLen) {
-      const t = segLen === 0 ? 0 : half / segLen;
+    if (target <= segLen) {
+      const t = segLen === 0 ? 0 : target / segLen;
       return [
         Math.round(pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t),
         Math.round(pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t),
       ];
     }
-    half -= segLen;
+    target -= segLen;
   }
   return pts[pts.length - 1];
 }
@@ -330,15 +436,11 @@ function polylineMidpoint(pts: Array<[number, number]>): [number, number] {
 interface ComputedEdge {
   edge: DiagramEdge;
   pathD: string;
-  length: number;
   labelPoint: [number, number];
-  duration: string;
-  beginDelay: string;
 }
 
 const computedEdges = computed<ComputedEdge[]>(() => {
   const result: ComputedEdge[] = [];
-  let activeCounter = 0;
 
   for (const edge of currentEdges.value) {
     const fromNode = nodeMap.value.get(edge.from);
@@ -346,20 +448,17 @@ const computedEdges = computed<ComputedEdge[]>(() => {
     if (!fromNode || !toNode) continue;
 
     let pathD = '';
-    let length = 120;
     let labelPoint: [number, number] = [0, 0];
 
     if (edge.selfLoop || edge.from === edge.to) {
-      const box = getNodeBox(fromNode);
-      const cx = box.x + box.w / 2;
+      const cx = fromNode.x + fromNode.w / 2;
       const side = edge.selfLoop === 'bottom' ? 'bottom' : 'top';
-      const yEdge = side === 'top' ? box.y : box.y + box.h;
+      const yEdge = side === 'top' ? fromNode.y : fromNode.y + fromNode.h;
       const dir = side === 'top' ? -1 : 1;
       const x1 = cx - 20;
       const x2 = cx + 20;
       const cy = yEdge + dir * 32;
       pathD = `M ${x1} ${yEdge} C ${x1} ${cy}, ${x2} ${cy}, ${x2} ${yEdge}`;
-      length = 104;
       labelPoint = [cx, yEdge + dir * 30];
     } else {
       const pts =
@@ -367,51 +466,142 @@ const computedEdges = computed<ComputedEdge[]>(() => {
           ? edge.points
           : computeAutoEdgePoints(fromNode, toNode);
       pathD = buildRoundedOrthogonalPath(pts, 6);
-      length = Math.max(40, polylineLength(pts));
-      labelPoint = polylineMidpoint(pts);
+      labelPoint = polylinePointAt(pts, edge.labelPosition ?? 0.5);
     }
 
-    const active = isEdgeActive(edge);
-    const durSec = Math.max(0.42, Math.min(1.5, length / 280)).toFixed(2);
-    const delaySec = active ? (activeCounter * 0.1).toFixed(1) : '0';
-    if (active) activeCounter += 1;
+    if (edge.labelOffset) {
+      labelPoint = [
+        labelPoint[0] + edge.labelOffset[0],
+        labelPoint[1] + edge.labelOffset[1],
+      ];
+    }
 
     result.push({
       edge,
       pathD,
-      length,
       labelPoint,
-      duration: `${durSec}s`,
-      beginDelay: `${delaySec}s`,
     });
   }
 
   return result;
 });
 
-function edgeStrokeColor(edge: DiagramEdge, active: boolean): string {
-  if (!active) {
-    return edge.kind === 'dashed'
-      ? 'var(--ldx-muted, #78716C)'
-      : 'var(--ldx-border-strong, #D6D3D1)';
+function edgeStrokeColor(edge: DiagramEdge, dimmed: boolean): string {
+  if (dimmed) {
+    return 'var(--ldx-border-strong, #D6D3D1)';
   }
-  return edge.kind === 'primary' ? 'var(--ldx-accent, #D94E1F)' : 'var(--ldx-flow, #2563EB)';
+  if (edge.kind === 'primary') return 'var(--ldx-accent, #D94E1F)';
+  if (edge.kind === 'dashed') return 'var(--ldx-muted, #68625D)';
+  if (edge.kind === 'return') return 'var(--ldx-return, #475569)';
+  return 'var(--ldx-flow, #2563EB)';
 }
 
-function edgeMarkerEnd(edge: DiagramEdge, active: boolean): string {
-  if (!active) return `url(#${arrowNeutralId})`;
-  return edge.kind === 'primary' ? `url(#${arrowAccentId})` : `url(#${arrowFlowId})`;
+function edgeStrokeWidth(edge: DiagramEdge, dimmed: boolean): number {
+  if (dimmed) return 1;
+  if (edge.kind === 'primary') return isFiltering.value ? 1.8 : 1.6;
+  if (edge.kind === 'dashed' || edge.kind === 'return') return isFiltering.value ? 1.55 : 1.35;
+  return isFiltering.value ? 1.7 : 1.5;
+}
+
+function edgeDashArray(edge: DiagramEdge): string | undefined {
+  if (edge.kind === 'dashed') return '5 4';
+  if (edge.kind === 'return') return '6 3';
+  return undefined;
+}
+
+function edgeMarkerEnd(edge: DiagramEdge, dimmed: boolean): string {
+  if (dimmed) return `url(#${arrowNeutralId})`;
+  if (edge.kind === 'primary') return `url(#${arrowAccentId})`;
+  if (edge.kind === 'dashed') return `url(#${arrowMutedId})`;
+  if (edge.kind === 'return') return `url(#${arrowReturnId})`;
+  return `url(#${arrowFlowId})`;
 }
 
 function labelPillWidth(text: string): number {
-  return Math.max(40, Math.ceil(text.length * 6.4 + 14));
+  return Math.max(36, Math.ceil(text.length * 6.2 + 16));
+}
+
+function nodeCardFill(cNode: ComputedNode): string {
+  const { node } = cNode;
+  if (selectedNodeId.value === node.id) {
+    return 'var(--ldx-accent-soft, rgba(217, 78, 31, 0.10))';
+  }
+  if (isFiltering.value && isNodeHighlighted(node.id)) {
+    return node.focal
+      ? 'var(--ldx-accent-soft, rgba(217, 78, 31, 0.10))'
+      : 'var(--ldx-flow-soft, rgba(37, 99, 235, 0.10))';
+  }
+  if (node.tone === 'accent' || (!isFiltering.value && node.focal)) {
+    return 'var(--ldx-accent-soft, rgba(217, 78, 31, 0.10))';
+  }
+  if (node.tone === 'flow') {
+    return 'var(--ldx-flow-soft, rgba(37, 99, 235, 0.10))';
+  }
+  if (node.tone === 'muted') {
+    return 'var(--ldx-surface-alt, #F2F0EA)';
+  }
+  return 'transparent';
+}
+
+function nodeCardStroke(cNode: ComputedNode): string {
+  const { node } = cNode;
+  if (selectedNodeId.value === node.id) {
+    return 'var(--ldx-accent, #D94E1F)';
+  }
+  if (isFiltering.value && isNodeHighlighted(node.id)) {
+    return node.focal ? 'var(--ldx-accent, #D94E1F)' : 'var(--ldx-flow, #2563EB)';
+  }
+  if (node.focal || node.tone === 'accent') {
+    return 'var(--ldx-accent, #D94E1F)';
+  }
+  if (node.tone === 'flow') {
+    return 'var(--ldx-flow, #2563EB)';
+  }
+  return 'var(--ldx-border-strong, #D6D3D1)';
+}
+
+function nodeCardStrokeWidth(cNode: ComputedNode): number {
+  const { node } = cNode;
+  if (selectedNodeId.value === node.id) return 1.5;
+  if (isFiltering.value && isNodeHighlighted(node.id)) return 1.4;
+  if (node.focal || node.tone === 'accent' || node.tone === 'flow') return 1.3;
+  return 1;
+}
+
+function nodeIconColor(cNode: ComputedNode): string {
+  const { node } = cNode;
+  if (selectedNodeId.value === node.id || node.focal || node.tone === 'accent') {
+    return 'var(--ldx-accent-text, #AF4204)';
+  }
+  if ((isFiltering.value && isNodeHighlighted(node.id)) || node.tone === 'flow') {
+    return 'var(--ldx-flow, #2563EB)';
+  }
+  return 'var(--ldx-muted, #68625D)';
+}
+
+function formatStepTitle(rawTitle: string): string {
+  const stripped = rawTitle.replace(/^\d+\s*[.·:)]\s*/, '').trim();
+  return stripped || rawTitle;
 }
 
 function selectMode(idx: number) {
   activeModeIndex.value = idx;
-  activeStepIndex.value = 0;
+  selectedStepIndex.value = null;
   selectedNodeId.value = null;
-  animEpoch.value += 1;
+}
+
+function selectOverview() {
+  selectedStepIndex.value = null;
+  selectedNodeId.value = null;
+}
+
+function toggleStep(idx: number) {
+  selectedNodeId.value = null;
+  if (selectedStepIndex.value === idx) {
+    selectedStepIndex.value = null;
+  } else {
+    selectedStepIndex.value = idx;
+  }
 }
 
 function selectNode(nodeId: string) {
@@ -419,109 +609,45 @@ function selectNode(nodeId: string) {
     selectedNodeId.value = null;
   } else {
     selectedNodeId.value = nodeId;
-    isPlaying.value = false;
   }
 }
 
-function clearNodeSelection() {
+function resetSelection() {
   selectedNodeId.value = null;
-}
-
-function prevStep() {
-  if (currentSteps.value.length === 0) return;
-  selectedNodeId.value = null;
-  activeStepIndex.value =
-    (clampedStepIndex.value - 1 + currentSteps.value.length) % currentSteps.value.length;
-  animEpoch.value += 1;
-}
-
-function nextStep() {
-  if (currentSteps.value.length === 0) return;
-  selectedNodeId.value = null;
-  activeStepIndex.value = (clampedStepIndex.value + 1) % currentSteps.value.length;
-  animEpoch.value += 1;
-}
-
-function togglePlay() {
-  if (prefersReducedMotion.value) return;
-  selectedNodeId.value = null;
-  isPlaying.value = !isPlaying.value;
-}
-
-function replay() {
-  selectedNodeId.value = null;
-  activeStepIndex.value = 0;
-  animEpoch.value += 1;
-  if (!prefersReducedMotion.value) {
-    isPlaying.value = true;
-  }
+  selectedStepIndex.value = null;
 }
 
 function onContainerKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    if (isFiltering.value) {
+      e.preventDefault();
+      resetSelection();
+    }
+    return;
+  }
+  if (currentSteps.value.length <= 1) return;
   if (e.key === 'ArrowRight') {
     e.preventDefault();
-    nextStep();
+    selectedNodeId.value = null;
+    if (selectedStepIndex.value === null) {
+      selectedStepIndex.value = 0;
+    } else if (selectedStepIndex.value >= currentSteps.value.length - 1) {
+      selectedStepIndex.value = null;
+    } else {
+      selectedStepIndex.value += 1;
+    }
   } else if (e.key === 'ArrowLeft') {
     e.preventDefault();
-    prevStep();
+    selectedNodeId.value = null;
+    if (selectedStepIndex.value === null) {
+      selectedStepIndex.value = currentSteps.value.length - 1;
+    } else if (selectedStepIndex.value <= 0) {
+      selectedStepIndex.value = null;
+    } else {
+      selectedStepIndex.value -= 1;
+    }
   }
 }
-
-let stepTimer: ReturnType<typeof setInterval> | null = null;
-let mediaQueryList: MediaQueryList | null = null;
-
-function stopTimer() {
-  if (stepTimer !== null) {
-    clearInterval(stepTimer);
-    stepTimer = null;
-  }
-}
-
-function syncTimer() {
-  stopTimer();
-  if (!isMounted.value || !isPlaying.value || prefersReducedMotion.value) return;
-  if (currentSteps.value.length <= 1) return;
-  stepTimer = setInterval(() => {
-    activeStepIndex.value = (clampedStepIndex.value + 1) % currentSteps.value.length;
-    animEpoch.value += 1;
-  }, 3800);
-}
-
-watch([isPlaying, prefersReducedMotion, () => currentSteps.value.length, activeModeIndex], () => {
-  syncTimer();
-});
-
-function handleReducedMotionChange(ev: MediaQueryListEvent) {
-  prefersReducedMotion.value = ev.matches;
-  if (ev.matches) {
-    isPlaying.value = false;
-  }
-}
-
-onMounted(() => {
-  isMounted.value = true;
-  const searchStill =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('motion') === 'still';
-
-  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
-    mediaQueryList = window.matchMedia('(prefers-reduced-motion: reduce)');
-    prefersReducedMotion.value = searchStill || mediaQueryList.matches;
-    mediaQueryList.addEventListener?.('change', handleReducedMotionChange);
-  } else {
-    prefersReducedMotion.value = searchStill;
-  }
-
-  if (!prefersReducedMotion.value) {
-    isPlaying.value = true;
-  }
-  syncTimer();
-});
-
-onBeforeUnmount(() => {
-  stopTimer();
-  mediaQueryList?.removeEventListener?.('change', handleReducedMotionChange);
-});
 </script>
 
 <template>
@@ -532,125 +658,20 @@ onBeforeUnmount(() => {
     :aria-label="title"
     @keydown="onContainerKeydown"
   >
-    <!-- Single Motion Governor Toolbar (40px) -->
-    <div class="ldx-diagram-toolbar" role="toolbar" :aria-label="labels.diagramControls">
+    <!-- Clean Editorial Header -->
+    <div class="ldx-diagram-toolbar">
       <div class="ldx-toolbar-left">
-        <span class="ldx-toolbar-dot" aria-hidden="true" />
         <span class="ldx-toolbar-title">{{ title }}</span>
       </div>
 
-      <div class="ldx-toolbar-controls">
-        <span v-if="currentSteps.length > 0" class="ldx-step-counter">{{ stepCounterText }}</span>
-
-        <button
-          type="button"
-          class="ldx-ctrl-btn"
-          :class="{ 'is-active': isPlaying && !prefersReducedMotion }"
-          :disabled="prefersReducedMotion"
-          :aria-pressed="isPlaying && !prefersReducedMotion"
-          :aria-label="prefersReducedMotion ? labels.static : isPlaying ? labels.pause : labels.play"
-          @click="togglePlay"
-        >
-          <svg
-            v-if="isPlaying && !prefersReducedMotion"
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            aria-hidden="true"
-          >
-            <rect x="2.5" y="2" width="2.2" height="8" rx="0.5" fill="currentColor" stroke="none" />
-            <rect x="7.3" y="2" width="2.2" height="8" rx="0.5" fill="currentColor" stroke="none" />
-          </svg>
-          <svg
-            v-else
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path d="M3 2.2L9.5 6L3 9.8V2.2Z" fill="currentColor" />
-          </svg>
-          <span class="ldx-ctrl-label">{{
-            prefersReducedMotion ? labels.static : isPlaying ? labels.pause : labels.play
-          }}</span>
-        </button>
-
-        <button
-          v-if="currentSteps.length > 1"
-          type="button"
-          class="ldx-ctrl-btn ldx-ctrl-icon-only"
-          :aria-label="labels.prev"
-          :title="labels.prev"
-          @click="prevStep"
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M7.5 2.5L4 6L7.5 9.5" />
-          </svg>
-        </button>
-
-        <button
-          v-if="currentSteps.length > 1"
-          type="button"
-          class="ldx-ctrl-btn ldx-ctrl-icon-only"
-          :aria-label="labels.next"
-          :title="labels.next"
-          @click="nextStep"
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M4.5 2.5L8 6L4.5 9.5" />
-          </svg>
-        </button>
-
-        <button
-          type="button"
-          class="ldx-ctrl-btn ldx-ctrl-icon-only"
-          :aria-label="labels.replay"
-          :title="labels.replay"
-          @click="replay"
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.4"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M2.25 4.5A4.25 4.25 0 1 1 2.4 7.8" />
-            <path d="M2 2.2V4.7H4.5" />
-          </svg>
+      <div v-if="isFiltering" class="ldx-toolbar-controls">
+        <button type="button" class="ldx-reset-btn" @click="resetSelection">
+          {{ labels.overview }}
         </button>
       </div>
     </div>
 
-    <!-- Optional Mode Selector Tabs -->
+    <!-- Optional Segmented Mode Tabs -->
     <div
       v-if="hasModes && modes && modes.length > 1"
       class="ldx-mode-bar"
@@ -669,13 +690,12 @@ onBeforeUnmount(() => {
       >
         {{ mode.label }}
       </button>
-      <span v-if="activeMode?.summary" class="ldx-mode-summary">{{ activeMode.summary }}</span>
     </div>
 
-    <!-- Static-First Interactive SVG Canvas -->
-    <div class="ldx-svg-stage">
+    <!-- Static-First Full-Contrast SVG Canvas -->
+    <div class="ldx-svg-stage" :style="{ '--ldx-mobile-min-w': mobileStageMinWidth }">
       <svg
-        :viewBox="viewBox"
+        :viewBox="resolvedViewBox"
         class="ldx-svg-canvas"
         role="img"
         :aria-label="title"
@@ -692,6 +712,17 @@ onBeforeUnmount(() => {
             orient="auto-start-reverse"
           >
             <path d="M 1 1.5 L 7 4 L 1 6.5 z" fill="var(--ldx-border-strong, #D6D3D1)" />
+          </marker>
+          <marker
+            :id="arrowMutedId"
+            viewBox="0 0 8 8"
+            refX="7"
+            refY="4"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <path d="M 1 1.5 L 7 4 L 1 6.5 z" fill="var(--ldx-muted, #68625D)" />
           </marker>
           <marker
             :id="arrowFlowId"
@@ -715,19 +746,17 @@ onBeforeUnmount(() => {
           >
             <path d="M 1 1.5 L 7 4 L 1 6.5 z" fill="var(--ldx-accent, #D94E1F)" />
           </marker>
-
-          <clipPath
-            v-for="node in currentNodes"
-            :id="`ldx-clip-${uid}-${node.id}`"
-            :key="`clip-${node.id}`"
+          <marker
+            :id="arrowReturnId"
+            viewBox="0 0 8 8"
+            refX="7"
+            refY="4"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
           >
-            <rect
-              :x="node.x + 36"
-              :y="node.y + 4"
-              :width="Math.max(40, (node.width ?? 160) - 44)"
-              :height="Math.max(24, (node.height ?? 64) - 8)"
-            />
-          </clipPath>
+            <path d="M 1 1.5 L 7 4 L 1 6.5 z" fill="var(--ldx-return, #475569)" />
+          </marker>
         </defs>
 
         <!-- Layer 1: Containment Zones -->
@@ -739,27 +768,21 @@ onBeforeUnmount(() => {
                 :y="zone.y"
                 :width="zone.width"
                 :height="zone.height"
-                rx="0"
+                rx="6"
                 fill="var(--ldx-surface-alt, #F2F0EA)"
-                fill-opacity="0.45"
+                fill-opacity="0.42"
                 stroke="var(--ldx-border, #E7E5E4)"
                 stroke-width="1"
               />
-              <rect
-                :x="zone.x"
-                :y="zone.y"
-                :width="zone.width"
-                height="24"
-                rx="0"
-                fill="var(--ldx-surface-alt, #F2F0EA)"
+              <line
+                :x1="zone.x"
+                :y1="zone.y + 24"
+                :x2="zone.x + zone.width"
+                :y2="zone.y + 24"
                 stroke="var(--ldx-border, #E7E5E4)"
                 stroke-width="1"
               />
-              <text
-                :x="zone.x + 12"
-                :y="zone.y + 15.5"
-                class="ldx-zone-label"
-              >
+              <text :x="zone.x + 12" :y="zone.y + 15.5" class="ldx-zone-label">
                 {{ zone.label.toUpperCase() }}
               </text>
             </template>
@@ -770,11 +793,28 @@ onBeforeUnmount(() => {
                 :y="zone.y"
                 :width="zone.width"
                 :height="zone.height"
-                rx="8"
+                rx="6"
                 fill="none"
                 stroke="var(--ldx-border-strong, #D6D3D1)"
                 stroke-width="1"
-                stroke-dasharray="4 4"
+                stroke-dasharray="5 4"
+              />
+              <text :x="zone.x + 12" :y="zone.y + 16" class="ldx-zone-label">
+                {{ zone.label.toUpperCase() }}
+              </text>
+            </template>
+
+            <template v-else-if="zone.kind === 'band'">
+              <rect
+                :x="zone.x"
+                :y="zone.y"
+                :width="zone.width"
+                :height="zone.height"
+                rx="6"
+                fill="var(--ldx-surface-alt, #F2F0EA)"
+                fill-opacity="0.28"
+                stroke="var(--ldx-border, #E7E5E4)"
+                stroke-width="1"
               />
               <text :x="zone.x + 12" :y="zone.y + 16" class="ldx-zone-label">
                 {{ zone.label.toUpperCase() }}
@@ -787,8 +827,9 @@ onBeforeUnmount(() => {
                 :y="zone.y"
                 :width="zone.width"
                 :height="zone.height"
-                rx="8"
-                fill="none"
+                rx="6"
+                fill="var(--ldx-surface, #FFFFFF)"
+                fill-opacity="0.35"
                 stroke="var(--ldx-border, #E7E5E4)"
                 stroke-width="1"
               />
@@ -799,60 +840,29 @@ onBeforeUnmount(() => {
           </g>
         </g>
 
-        <!-- Layer 2: Edges & Animated Packet Dots -->
+        <!-- Layer 2: Crisp Directional Edges & Masked Label Pills -->
         <g class="ldx-layer-edges">
           <g
             v-for="item in computedEdges"
-            :key="`${item.edge.id}-${animEpoch}`"
+            :key="item.edge.id"
             class="ldx-edge-group"
-            :class="{ 'is-active': isEdgeActive(item.edge) }"
+            :class="{
+              'is-active': isEdgeActive(item.edge),
+              'is-dimmed': isEdgeDimmed(item.edge),
+            }"
           >
-            <!-- Base static-first path -->
             <path
               :d="item.pathD"
               fill="none"
-              :stroke="edgeStrokeColor(item.edge, isEdgeActive(item.edge))"
-              :stroke-width="isEdgeActive(item.edge) ? (item.edge.kind === 'primary' ? 1.6 : 1.4) : 1"
-              :stroke-dasharray="item.edge.kind === 'dashed' ? '4 4' : undefined"
-              :marker-end="edgeMarkerEnd(item.edge, isEdgeActive(item.edge))"
+              :stroke="edgeStrokeColor(item.edge, isEdgeDimmed(item.edge))"
+              :stroke-width="edgeStrokeWidth(item.edge, isEdgeDimmed(item.edge))"
+              :stroke-dasharray="edgeDashArray(item.edge)"
+              :marker-end="edgeMarkerEnd(item.edge, isEdgeDimmed(item.edge))"
+              stroke-linecap="round"
+              stroke-linejoin="round"
               class="ldx-edge-base"
             />
 
-            <!-- Draw-in overlay on active solid paths -->
-            <path
-              v-if="
-                isMounted &&
-                isEdgeActive(item.edge) &&
-                item.edge.kind !== 'dashed' &&
-                !prefersReducedMotion
-              "
-              :d="item.pathD"
-              fill="none"
-              :stroke="edgeStrokeColor(item.edge, true)"
-              :stroke-width="item.edge.kind === 'primary' ? 1.7 : 1.5"
-              pathLength="1"
-              class="ldx-edge-draw"
-            />
-
-            <!-- Moving 3.5px packet dot when playing -->
-            <circle
-              v-if="isMounted && isPlaying && !prefersReducedMotion && isEdgeActive(item.edge)"
-              r="3.5"
-              :fill="
-                item.edge.kind === 'primary'
-                  ? 'var(--ldx-accent, #D94E1F)'
-                  : 'var(--ldx-flow, #2563EB)'
-              "
-            >
-              <animateMotion
-                :dur="item.duration"
-                :begin="item.beginDelay"
-                repeatCount="indefinite"
-                :path="item.pathD"
-              />
-            </circle>
-
-            <!-- Edge label pill -->
             <g v-if="item.edge.label" class="ldx-edge-label-wrap">
               <rect
                 :x="item.labelPoint[0] - labelPillWidth(item.edge.label) / 2"
@@ -862,11 +872,11 @@ onBeforeUnmount(() => {
                 rx="4"
                 fill="var(--ldx-bg, #FAFAF9)"
                 :stroke="
-                  isEdgeActive(item.edge)
-                    ? edgeStrokeColor(item.edge, true)
-                    : 'var(--ldx-border, #E7E5E4)'
+                  isFiltering && isEdgeActive(item.edge)
+                    ? edgeStrokeColor(item.edge, false)
+                    : 'var(--ldx-border-strong, #D6D3D1)'
                 "
-                stroke-width="0.8"
+                stroke-width="0.9"
               />
               <text
                 :x="item.labelPoint[0]"
@@ -874,9 +884,9 @@ onBeforeUnmount(() => {
                 text-anchor="middle"
                 class="ldx-edge-label"
                 :fill="
-                  isEdgeActive(item.edge)
-                    ? 'var(--ldx-ink, #0C0A09)'
-                    : 'var(--ldx-muted, #78716C)'
+                  isEdgeDimmed(item.edge)
+                    ? 'var(--ldx-muted, #68625D)'
+                    : 'var(--ldx-ink, #0C0A09)'
                 "
               >
                 {{ item.edge.label }}
@@ -885,147 +895,171 @@ onBeforeUnmount(() => {
           </g>
         </g>
 
-        <!-- Layer 3: Nodes -->
+        <!-- Layer 3: Multi-line Accessible Nodes (Zero clipPath truncation) -->
         <g class="ldx-layer-nodes">
           <g
-            v-for="node in currentNodes"
-            :key="node.id"
+            v-for="cNode in computedNodes"
+            :key="cNode.node.id"
             role="button"
             tabindex="0"
             class="ldx-node"
             :class="{
-              'is-focal': Boolean(node.focal),
-              'is-active': isNodeHighlighted(node.id),
-              'is-selected': selectedNodeId === node.id,
-              'is-dimmed': isNodeDimmed(node.id),
+              'is-focal': Boolean(cNode.node.focal),
+              'is-active': isNodeHighlighted(cNode.node.id),
+              'is-selected': selectedNodeId === cNode.node.id,
+              'is-dimmed': isNodeDimmed(cNode.node.id),
             }"
-            :aria-label="`${node.title} — ${node.sub}`"
-            :aria-pressed="selectedNodeId === node.id"
-            @click="selectNode(node.id)"
-            @keydown.enter.prevent="selectNode(node.id)"
-            @keydown.space.prevent="selectNode(node.id)"
+            :aria-label="
+              cNode.subText ? `${cNode.node.title} — ${cNode.subText}` : cNode.node.title
+            "
+            :aria-pressed="selectedNodeId === cNode.node.id"
+            @click="selectNode(cNode.node.id)"
+            @keydown.enter.prevent="selectNode(cNode.node.id)"
+            @keydown.space.prevent="selectNode(cNode.node.id)"
           >
-            <!-- Opaque card base so grid/zone lines never bleed through -->
+            <!-- Opaque card base so grid/zone/edge lines never bleed through -->
             <rect
-              :x="node.x"
-              :y="node.y"
-              :width="node.width ?? 160"
-              :height="node.height ?? 64"
+              :x="cNode.x"
+              :y="cNode.y"
+              :width="cNode.w"
+              :height="cNode.h"
               rx="6"
               fill="var(--ldx-surface, #FFFFFF)"
             />
 
             <!-- Subtle semantic fill + border -->
             <rect
-              :x="node.x"
-              :y="node.y"
-              :width="node.width ?? 160"
-              :height="node.height ?? 64"
+              :x="cNode.x"
+              :y="cNode.y"
+              :width="cNode.w"
+              :height="cNode.h"
               rx="6"
-              :fill="
-                selectedNodeId === node.id || (node.focal && isNodeHighlighted(node.id))
-                  ? 'var(--ldx-accent-soft, rgba(217, 78, 31, 0.10))'
-                  : isNodeHighlighted(node.id)
-                    ? 'var(--ldx-flow-soft, rgba(37, 99, 235, 0.10))'
-                    : 'transparent'
-              "
-              :stroke="
-                selectedNodeId === node.id || (node.focal && isNodeHighlighted(node.id))
-                  ? 'var(--ldx-accent, #D94E1F)'
-                  : isNodeHighlighted(node.id)
-                    ? 'var(--ldx-flow, #2563EB)'
-                    : node.focal
-                      ? 'var(--ldx-accent, #D94E1F)'
-                      : 'var(--ldx-border-strong, #D6D3D1)'
-              "
-              :stroke-width="
-                selectedNodeId === node.id || isNodeHighlighted(node.id) || node.focal ? 1.3 : 1
-              "
+              :fill="nodeCardFill(cNode)"
+              :stroke="nodeCardStroke(cNode)"
+              :stroke-width="nodeCardStrokeWidth(cNode)"
+              :stroke-dasharray="cNode.node.dashed ? '5 4' : undefined"
             />
 
-            <!-- Left icon positioned cleanly in 4px grid -->
+            <!-- Left icon -->
             <g
-              :transform="`translate(${node.x + 12}, ${node.y + Math.round(((node.height ?? 64) - 16) / 2)})`"
-              :style="{
-                color:
-                  selectedNodeId === node.id || node.focal
-                    ? 'var(--ldx-accent-text, #AF4204)'
-                    : isNodeHighlighted(node.id)
-                      ? 'var(--ldx-flow, #2563EB)'
-                      : 'var(--ldx-muted, #78716C)',
-              }"
+              :transform="`translate(${cNode.x + 12}, ${cNode.iconY})`"
+              :style="{ color: nodeIconColor(cNode) }"
             >
-              <StrokeIcon :name="node.icon" :size="16" />
+              <StrokeIcon :name="cNode.node.icon" :size="16" />
             </g>
 
-            <!-- Node Title + Monospace Sub -->
-            <g :clip-path="`url(#ldx-clip-${uid}-${node.id})`">
-              <text
-                :x="node.x + 36"
-                :y="node.y + Math.round((node.height ?? 64) / 2) - 4"
-                class="ldx-node-title"
+            <!-- Multi-line Node Title -->
+            <text
+              v-if="cNode.titleLines.length > 0"
+              :x="cNode.x + 36"
+              :y="cNode.titleStartY"
+              class="ldx-node-title"
+            >
+              <tspan
+                v-for="(line, lineIdx) in cNode.titleLines"
+                :key="`t-${cNode.node.id}-${lineIdx}`"
+                :x="cNode.x + 36"
+                :dy="lineIdx === 0 ? 0 : TITLE_LINE_HEIGHT"
               >
-                {{ node.title }}
-              </text>
-              <text
-                :x="node.x + 36"
-                :y="node.y + Math.round((node.height ?? 64) / 2) + 13"
-                class="ldx-node-sub"
+                {{ line }}
+              </tspan>
+            </text>
+
+            <!-- Multi-line Monospace Sub -->
+            <text
+              v-if="cNode.subLines.length > 0"
+              :x="cNode.x + 36"
+              :y="cNode.subStartY"
+              class="ldx-node-sub"
+            >
+              <tspan
+                v-for="(line, lineIdx) in cNode.subLines"
+                :key="`s-${cNode.node.id}-${lineIdx}`"
+                :x="cNode.x + 36"
+                :dy="lineIdx === 0 ? 0 : SUB_LINE_HEIGHT"
               >
-                {{ node.sub }}
-              </text>
-            </g>
+                {{ line }}
+              </tspan>
+            </text>
           </g>
         </g>
       </svg>
     </div>
 
-    <!-- Step Progress Strip (when >1 steps) -->
-    <div v-if="currentSteps.length > 1" class="ldx-step-rail" role="tablist" :aria-label="labels.activeStep">
+    <!-- Optional Calm Step Walkthrough Rail (only when steps.length > 1) -->
+    <div
+      v-if="currentSteps.length > 1"
+      class="ldx-step-rail"
+      role="tablist"
+      :aria-label="labels.stepWalkthrough"
+    >
+      <button
+        type="button"
+        role="tab"
+        class="ldx-step-pill"
+        :class="{ 'is-active': selectedStepIndex === null && selectedNodeId === null }"
+        :aria-selected="selectedStepIndex === null && selectedNodeId === null"
+        @click="selectOverview"
+      >
+        <span class="ldx-step-name">{{ labels.overview }}</span>
+      </button>
+
       <button
         v-for="(step, idx) in currentSteps"
         :key="step.id"
         type="button"
         role="tab"
         class="ldx-step-pill"
-        :class="{ 'is-active': idx === clampedStepIndex }"
-        :aria-selected="idx === clampedStepIndex"
-        @click="
-          selectedNodeId = null;
-          activeStepIndex = idx;
-          animEpoch += 1;
-        "
+        :class="{ 'is-active': selectedStepIndex === idx }"
+        :aria-selected="selectedStepIndex === idx"
+        @click="toggleStep(idx)"
       >
-        <span class="ldx-step-num">{{ String(idx + 1).padStart(2, '0') }}</span>
-        <span v-if="!compact" class="ldx-step-name">{{ step.title }}</span>
+        <span class="ldx-step-num">{{ idx + 1 }}.</span>
+        <span class="ldx-step-name">{{ formatStepTitle(step.title) }}</span>
       </button>
     </div>
 
     <!-- Interactive 5-Field Node & Step Inspector Drawer -->
     <div v-if="inspectedNode || currentStep" class="ldx-inspector">
-      <div v-if="currentStep" class="ldx-inspector-step">
+      <div class="ldx-inspector-step">
         <div class="ldx-inspector-step-head">
           <span class="ldx-badge-step">
-            {{ selectedNodeId ? labels.selectedNode : `${labels.activeStep} ${stepCounterText}` }}
+            {{
+              selectedNodeId
+                ? labels.selectedNode
+                : currentStep && selectedStepIndex !== null
+                  ? `${labels.stepPrefix} ${selectedStepIndex + 1}`
+                  : labels.inspectorBadge
+            }}
           </span>
           <strong class="ldx-inspector-step-title">
-            {{ selectedNodeId && inspectedNode ? inspectedNode.title : currentStep.title }}
+            {{
+              selectedNodeId && inspectedNode
+                ? inspectedNode.title
+                : currentStep
+                  ? formatStepTitle(currentStep.title)
+                  : inspectedNode?.title
+            }}
           </strong>
+          <span v-if="!isFiltering" class="ldx-inspector-hint">{{ labels.inspectorHint }}</span>
           <button
-            v-if="selectedNodeId"
+            v-if="isFiltering"
             type="button"
             class="ldx-clear-btn"
-            @click="clearNodeSelection"
+            @click="resetSelection"
           >
-            {{ labels.clearSelection }}
+            {{ labels.reset }}
           </button>
         </div>
 
-        <p v-if="!selectedNodeId" class="ldx-inspector-desc">{{ currentStep.description }}</p>
+        <p v-if="!selectedNodeId && currentStep" class="ldx-inspector-desc">
+          {{ currentStep.description }}
+        </p>
 
         <div
           v-if="
             !selectedNodeId &&
+            currentStep &&
             (currentStep.route || currentStep.payload || (currentStep.chips && currentStep.chips.length))
           "
           class="ldx-step-meta"
@@ -1091,14 +1125,14 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
-/* Single Motion Governor Toolbar */
+/* Calm Editorial Header */
 .ldx-diagram-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 40px;
-  padding: 0 12px;
+  min-height: 38px;
+  padding: 6px 14px;
   background-color: var(--ldx-surface-alt, #F2F0EA);
   border-bottom: 1px solid var(--ldx-border, #E7E5E4);
 }
@@ -1106,21 +1140,13 @@ onBeforeUnmount(() => {
 .ldx-toolbar-left {
   display: flex;
   align-items: center;
-  gap: 8px;
   min-width: 0;
-}
-
-.ldx-toolbar-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 9999px;
-  background-color: var(--ldx-accent, #D94E1F);
-  flex-shrink: 0;
 }
 
 .ldx-toolbar-title {
   font-size: 0.8125rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--ldx-ink, #0C0A09);
   white-space: nowrap;
   overflow: hidden;
@@ -1130,65 +1156,34 @@ onBeforeUnmount(() => {
 .ldx-toolbar-controls {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
-.ldx-step-counter {
-  font-family: var(--vp-font-family-mono, 'JetBrains Mono', monospace);
-  font-variant-numeric: tabular-nums;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--ldx-muted, #78716C);
-  padding: 0 6px;
-}
-
-.ldx-ctrl-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  height: 26px;
-  padding: 0 8px;
-  border: 1px solid var(--ldx-border, #E7E5E4);
+.ldx-reset-btn {
+  padding: 2px 9px;
+  border: 1px solid var(--ldx-border-strong, #D6D3D1);
   border-radius: 4px;
   background-color: var(--ldx-surface, #FFFFFF);
   color: var(--ldx-ink-2, #44403C);
   font-family: var(--vp-font-family-mono, 'JetBrains Mono', monospace);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 500;
   cursor: pointer;
-  transition: border-color 140ms ease, color 140ms ease, background-color 140ms ease;
 }
 
-.ldx-ctrl-btn.ldx-ctrl-icon-only {
-  width: 26px;
-  padding: 0;
-}
-
-.ldx-ctrl-btn:hover:not(:disabled) {
-  border-color: var(--ldx-border-strong, #D6D3D1);
+.ldx-reset-btn:hover {
+  border-color: var(--ldx-accent, #D94E1F);
   color: var(--ldx-ink, #0C0A09);
 }
 
-.ldx-ctrl-btn.is-active {
-  border-color: var(--ldx-accent, #D94E1F);
-  color: var(--ldx-accent-text, #AF4204);
-  background-color: var(--ldx-accent-soft, rgba(217, 78, 31, 0.1));
-}
-
-.ldx-ctrl-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-/* Mode tabs */
+/* Segmented Mode Tabs */
 .ldx-mode-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--ldx-border, #E7E5E4);
   background-color: var(--ldx-surface, #FFFFFF);
 }
@@ -1197,13 +1192,14 @@ onBeforeUnmount(() => {
   max-width: 100%;
   padding: 4px 10px;
   border: 1px solid var(--ldx-border, #E7E5E4);
-  border-radius: 4px;
+  border-radius: 5px;
   background-color: transparent;
   color: var(--ldx-ink-2, #44403C);
   font-size: 0.75rem;
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease, background-color 140ms ease;
 }
 
 .ldx-mode-tab:hover {
@@ -1218,29 +1214,16 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 
-.ldx-mode-summary {
-  margin-left: auto;
-  min-width: 0;
-  max-width: 100%;
-  font-family: var(--vp-font-family-mono, 'JetBrains Mono', monospace);
-  font-size: 0.75rem;
-  line-height: 1.45;
-  color: var(--ldx-muted, #78716C);
-  white-space: normal;
-  overflow-wrap: anywhere;
-  text-align: right;
-}
-
 /* SVG Stage */
 .ldx-svg-stage {
   box-sizing: border-box;
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   background-color: var(--ldx-bg, #FAFAF9);
 }
 
 .ldx-diagram.is-compact .ldx-svg-stage {
-  padding: 8px;
+  padding: 10px;
 }
 
 .ldx-svg-canvas {
@@ -1255,23 +1238,19 @@ onBeforeUnmount(() => {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
-  fill: var(--ldx-muted, #78716C);
+  fill: var(--ldx-muted, #68625D);
+}
+
+.ldx-edge-group {
+  transition: opacity 160ms ease;
+}
+
+.ldx-edge-group.is-dimmed {
+  opacity: 0.32;
 }
 
 .ldx-edge-base {
   transition: stroke 160ms ease, stroke-width 160ms ease;
-}
-
-.ldx-edge-draw {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: ldxEdgeDraw 480ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-@keyframes ldxEdgeDraw {
-  to {
-    stroke-dashoffset: 0;
-  }
 }
 
 .ldx-edge-label {
@@ -1282,12 +1261,12 @@ onBeforeUnmount(() => {
 
 .ldx-node {
   cursor: pointer;
-  transition: opacity 180ms ease;
+  transition: opacity 160ms ease;
   outline: none;
 }
 
 .ldx-node.is-dimmed {
-  opacity: 0.72;
+  opacity: 0.42;
 }
 
 .ldx-node:hover,
@@ -1297,25 +1276,25 @@ onBeforeUnmount(() => {
 
 .ldx-node-title {
   font-family: var(--vp-font-family-base, 'Be Vietnam Pro', system-ui, sans-serif);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   fill: var(--ldx-ink, #0C0A09);
 }
 
 .ldx-node-sub {
   font-family: var(--vp-font-family-mono, 'JetBrains Mono', monospace);
-  font-size: 10.5px;
+  font-size: 10.2px;
   font-weight: 500;
-  fill: var(--ldx-muted, #78716C);
+  fill: var(--ldx-muted, #68625D);
 }
 
-/* Step Rail */
+/* Optional Calm Step Walkthrough Rail */
 .ldx-step-rail {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 8px 14px;
   border-top: 1px solid var(--ldx-border, #E7E5E4);
   background-color: var(--ldx-surface-alt, #F2F0EA);
 }
@@ -1323,16 +1302,17 @@ onBeforeUnmount(() => {
 .ldx-step-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   max-width: 100%;
-  padding: 4px 8px;
+  padding: 4px 9px;
   border: 1px solid var(--ldx-border, #E7E5E4);
-  border-radius: 4px;
+  border-radius: 5px;
   background-color: var(--ldx-surface, #FFFFFF);
   color: var(--ldx-ink-2, #44403C);
   font-size: 0.75rem;
   white-space: nowrap;
   cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease, background-color 140ms ease;
 }
 
 .ldx-step-pill:hover {
@@ -1350,8 +1330,8 @@ onBeforeUnmount(() => {
 .ldx-step-num {
   font-family: var(--vp-font-family-mono, 'JetBrains Mono', monospace);
   font-variant-numeric: tabular-nums;
-  font-size: 0.7rem;
-  color: var(--ldx-muted, #78716C);
+  font-size: 0.72rem;
+  color: var(--ldx-muted, #68625D);
 }
 
 .ldx-step-pill.is-active .ldx-step-num {
@@ -1411,13 +1391,20 @@ onBeforeUnmount(() => {
   color: var(--ldx-ink, #0C0A09);
 }
 
+.ldx-inspector-hint {
+  margin-left: auto;
+  font-family: var(--vp-font-family-mono, 'JetBrains Mono', monospace);
+  font-size: 0.6875rem;
+  color: var(--ldx-muted, #68625D);
+}
+
 .ldx-clear-btn {
   margin-left: auto;
   padding: 2px 8px;
   border: 1px solid var(--ldx-border, #E7E5E4);
   border-radius: 4px;
   background: transparent;
-  color: var(--ldx-muted, #78716C);
+  color: var(--ldx-ink-2, #44403C);
   font-family: var(--vp-font-family-mono, 'JetBrains Mono', monospace);
   font-size: 0.6875rem;
   cursor: pointer;
@@ -1490,7 +1477,7 @@ onBeforeUnmount(() => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--ldx-muted, #78716C);
+  color: var(--ldx-muted, #68625D);
   margin-bottom: 2px;
 }
 
@@ -1518,24 +1505,19 @@ onBeforeUnmount(() => {
   background-color: var(--ldx-surface-alt, #F2F0EA);
   font-size: 0.8125rem;
   line-height: 1.55;
-  color: var(--ldx-muted, #78716C);
+  color: var(--ldx-muted, #68625D);
 }
 
 @media (max-width: 640px) {
   .ldx-diagram-toolbar {
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px 12px;
+    gap: 6px 10px;
     padding: 8px 12px;
   }
 
   .ldx-toolbar-left {
-    flex: 1 1 100%;
-    align-items: flex-start;
-  }
-
-  .ldx-toolbar-dot {
-    margin-top: 6px;
+    flex: 1 1 auto;
   }
 
   .ldx-toolbar-title {
@@ -1545,25 +1527,10 @@ onBeforeUnmount(() => {
     line-height: 1.4;
   }
 
-  .ldx-toolbar-controls {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .ldx-ctrl-label {
-    display: none;
-  }
-
   .ldx-mode-tab {
     white-space: normal;
     text-align: left;
     line-height: 1.35;
-  }
-
-  .ldx-mode-summary {
-    flex-basis: 100%;
-    margin-left: 0;
-    text-align: left;
   }
 
   .ldx-svg-stage {
@@ -1572,7 +1539,7 @@ onBeforeUnmount(() => {
   }
 
   .ldx-svg-canvas {
-    min-width: 640px;
+    min-width: var(--ldx-mobile-min-w, 640px);
   }
 
   .ldx-step-pill {
@@ -1581,15 +1548,13 @@ onBeforeUnmount(() => {
     line-height: 1.35;
   }
 
+  .ldx-inspector-hint {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
   .ldx-inspector-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ldx-edge-draw {
-    animation: none;
-    stroke-dashoffset: 0;
   }
 }
 </style>

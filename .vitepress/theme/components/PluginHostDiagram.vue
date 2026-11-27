@@ -30,193 +30,474 @@ const locale = computed<DiagramLocale>(() => {
   return siteLang.startsWith('vi') ? 'vi' : 'en';
 });
 
-const mountZones = computed<DiagramZone[]>(() =>
+const contractZones = computed<DiagramZone[]>(() =>
   locale.value === 'vi'
     ? [
         {
-          id: 'plugins-zone',
-          label: '7 Plugin Apache-2.0 (plugins/nocobase/* · sdkProvidedByHost: true)',
+          id: 'cz-build',
+          label: 'GIAI ĐOẠN BIÊN DỊCH · ESBUILD 0.28.2 & NOCOBASE-EXTERNALS.MJS',
           x: 16,
-          y: 12,
-          width: 848,
-          height: 220,
+          y: 16,
+          width: 696,
+          height: 296,
           kind: 'admin',
         },
         {
-          id: 'host-zone',
-          label: 'Container Host Ngoài (Điều 5.2 NocoBase)',
-          x: 16,
-          y: 256,
-          width: 380,
-          height: 120,
+          id: 'cz-runtime',
+          label: 'GIAI ĐOẠN RUNTIME · CONTAINER OCI NGOÀI (:RO MOUNT)',
+          x: 772,
+          y: 16,
+          width: 432,
+          height: 296,
           kind: 'external',
-        },
-        {
-          id: 'data-zone',
-          label: 'Dữ liệu Cô lập & Bộ nhớ đệm',
-          x: 484,
-          y: 256,
-          width: 380,
-          height: 120,
-          kind: 'traffic',
         },
       ]
     : [
         {
-          id: 'plugins-zone',
-          label: '7 Apache-2.0 Plugins (plugins/nocobase/* · sdkProvidedByHost: true)',
+          id: 'cz-build',
+          label: 'BUILD STAGE · ESBUILD 0.28.2 & NOCOBASE-EXTERNALS.MJS',
           x: 16,
-          y: 12,
-          width: 848,
-          height: 220,
+          y: 16,
+          width: 696,
+          height: 296,
           kind: 'admin',
         },
         {
-          id: 'host-zone',
-          label: 'External OCI Host (Clause 5.2)',
-          x: 16,
-          y: 256,
-          width: 380,
-          height: 120,
+          id: 'cz-runtime',
+          label: 'RUNTIME STAGE · EXTERNAL OCI CONTAINER (:RO MOUNT)',
+          x: 772,
+          y: 16,
+          width: 432,
+          height: 296,
           kind: 'external',
-        },
-        {
-          id: 'data-zone',
-          label: 'Isolated Database & Cache',
-          x: 484,
-          y: 256,
-          width: 380,
-          height: 120,
-          kind: 'traffic',
         },
       ],
 );
 
-const mountNodes = computed<DiagramNode[]>(() => {
+const contractNodes = computed<DiagramNode[]>(() => {
   const isVi = locale.value === 'vi';
   return [
     {
-      id: 'p-action-bridge',
-      title: 'Action Bridge',
-      sub: 'plugin-action-bridge',
-      icon: 'plug',
-      x: 32,
-      y: 52,
+      id: 'src_plugins',
+      title: isVi ? 'Mã nguồn 7 @latticedx/*' : '7 @latticedx/* Sources',
+      sub: ['Apache-2.0 · v0.4.2', 'sdkProvidedByHost: true'],
+      icon: 'file-text',
+      x: 28,
+      y: 118,
       width: 192,
-      height: 64,
-      zoneId: 'plugins-zone',
+      height: 88,
+      zoneId: 'cz-build',
       inspector: isVi
         ? {
-            role: 'Cầu nối Hành động & Tích hợp Studio',
-            packageOrPort: '@latticedx/plugin-action-bridge · v0.4.2',
-            protocol: 'server.cjs (bridge.cjs / studio.cjs) · client-v2',
-            payloadOrSchema: 'dist/externalVersion.js | @nocobase/server',
+            role: 'Mã nguồn Apache-2.0 Độc lập với Upstream',
+            packageOrPort: 'plugins/nocobase/*/package.json (v0.4.2)',
+            protocol: 'SPDX Apache-2.0 · supportedVersions: 2.2.x',
+            payloadOrSchema: 'sdkProvidedByHost: true · testedRuntime: 2.2.50',
             responsibilities:
-              'Ánh xạ hành động điều phối và điểm mở rộng Studio vào runtime NocoBase 2.2.50 với gói externalVersion sinh tự động.',
+              'Mỗi plugin khai báo rõ sdkProvidedByHost: true, có LICENSE/README riêng và phân tách rõ phụ thuộc host với thư viện Pure-OSI.',
+          }
+        : {
+            role: 'Standalone Apache-2.0 Plugin Source Trees',
+            packageOrPort: 'plugins/nocobase/*/package.json (v0.4.2)',
+            protocol: 'SPDX Apache-2.0 · supportedVersions: 2.2.x',
+            payloadOrSchema: 'sdkProvidedByHost: true · testedRuntime: 2.2.50',
+            responsibilities:
+              'Each plugin declares sdkProvidedByHost: true with its own LICENSE and splits into externalized host SDKs and bundled Pure-OSI libs.',
+          },
+    },
+    {
+      id: 'ext_sdk',
+      title: isVi ? 'Host Externals (Loại trừ)' : 'Host Externals (Stripped)',
+      sub: ['7 @nocobase/* packages', 'React 18.2 · AntD 5.24'],
+      icon: 'shield',
+      x: 284,
+      y: 54,
+      width: 200,
+      height: 84,
+      zoneId: 'cz-build',
+      focal: true,
+      inspector: isVi
+        ? {
+            role: 'Loại trừ SDK NocoBase và Vendor UI Khỏi Bundle',
+            packageOrPort: 'scripts/lib/nocobase-externals.mjs',
+            protocol: 'react@18.2.0 · antd@5.24.2 · 7 @nocobase/*',
+            payloadOrSchema: 'Stripped at build time (externalized)',
+            responsibilities:
+              'Loại trừ 7 gói @nocobase/* và React/AntD khỏi bản build để runtime container host cung cấp trực tiếp, không sao chép vào dist/*.',
+          }
+        : {
+            role: 'Host Vendor & SDK Externals (Stripped at Build)',
+            packageOrPort: 'scripts/lib/nocobase-externals.mjs',
+            protocol: 'react@18.2.0 · antd@5.24.2 · 7 @nocobase/*',
+            payloadOrSchema: 'Stripped at build time (externalized)',
+            responsibilities:
+              'Marks React, AntD, and all 7 @nocobase/* SDK packages external so esbuild strips them and resolves symbols from the host container.',
+          },
+    },
+    {
+      id: 'osi_libs',
+      title: isVi ? 'Thư viện Pure-OSI' : 'Bundled Pure-OSI Libs',
+      sub: ['openid-client@6.8.9', 'maplibre · @xyflow/react'],
+      icon: 'box',
+      x: 284,
+      y: 186,
+      width: 200,
+      height: 84,
+      zoneId: 'cz-build',
+      inspector: isVi
+        ? {
+            role: 'Đóng gói Thư viện Chuyên biệt Thuần OSI',
+            packageOrPort: 'openid-client · maplibre-gl · @xyflow/react · @dagrejs/dagre',
+            protocol: 'MIT / Apache-2.0 Bundled UMD & CJS',
+            payloadOrSchema: 'openid-client@6.8.9 | maplibre-gl@6.19.0 | @xyflow/react@12.12.1',
+            responsibilities:
+              'Đóng gói trực tiếp các thư viện MIT/Apache-2.0 cần thiết vào dist/* song song với nhánh Host Externals.',
+          }
+        : {
+            role: 'Self-Contained Pure-OSI Dependency Bundles',
+            packageOrPort: 'openid-client · maplibre-gl · @xyflow/react · @dagrejs/dagre',
+            protocol: 'MIT / Apache-2.0 Bundled UMD & CJS',
+            payloadOrSchema: 'openid-client@6.8.9 | maplibre-gl@6.19.0 | @xyflow/react@12.12.1',
+            responsibilities:
+              'Bundles MIT/Apache-2.0 libraries (openid-client, maplibre-gl, @xyflow/react, dagre) into dist/* alongside externalized host references.',
+          },
+    },
+    {
+      id: 'dist_out',
+      title: isVi ? 'Đầu ra dist/*' : 'Compiled dist/*',
+      sub: ['server · client · client-v2', 'externalVersion.js'],
+      icon: 'terminal',
+      x: 528,
+      y: 118,
+      width: 172,
+      height: 88,
+      zoneId: 'cz-build',
+      inspector: isVi
+        ? {
+            role: 'Điểm vào Đã Biên dịch Sẵn sàng Gắn Host',
+            packageOrPort: 'dist/server/index.js · dist/client-v2/index.js',
+            protocol: 'CommonJS / UMD · externalVersion.js',
+            payloadOrSchema: 'action-bridge/dist/externalVersion.js',
+            responsibilities:
+              'Hợp nhất tham chiếu external tới Host SDK và các gói Pure-OSI đã đóng gói thành artifact dist/* gắn :ro vào NocoBase.',
+          }
+        : {
+            role: 'Host-Ready Compiled Plugin Entrypoints',
+            packageOrPort: 'dist/server/index.js · dist/client-v2/index.js',
+            protocol: 'CommonJS / UMD · externalVersion.js',
+            payloadOrSchema: 'action-bridge/dist/externalVersion.js',
+            responsibilities:
+              'Converges externalized @nocobase/* import shims and bundled Pure-OSI libs into dist/* artifacts mounted :ro into NocoBase.',
+          },
+    },
+    {
+      id: 'host_oci',
+      title: 'NocoBase 2.2.50 Host',
+      sub: ['node_modules/@latticedx/*', 'Resolves Host SDK'],
+      icon: 'server',
+      x: 788,
+      y: 116,
+      width: 200,
+      height: 92,
+      zoneId: 'cz-runtime',
+      focal: true,
+      inspector: isVi
+        ? {
+            role: 'Container Host Ngoài & Bảo toàn Điều 5.2',
+            packageOrPort: 'nocobase/nocobase:2.2.50@sha256:04b751... · :80',
+            protocol: 'OCI Container · Read-Only Bind Mount (:ro) · Clause 5.2',
+            payloadOrSchema: '/app/nocobase/node_modules/@latticedx/*',
+            responsibilities:
+              'Nạp 7 plugin dạng :ro, giải quyết các import @nocobase/*/React/AntD tại runtime và giữ nguyên nhận diện Powered by NocoBase v2.2.50 theo Điều 5.2.',
+          }
+        : {
+            role: 'External OCI Host & Clause 5.2 Attribution',
+            packageOrPort: 'nocobase/nocobase:2.2.50@sha256:04b751... · :80',
+            protocol: 'OCI Container · Read-Only Bind Mount (:ro) · Clause 5.2',
+            payloadOrSchema: '/app/nocobase/node_modules/@latticedx/*',
+            responsibilities:
+              'Mounts all 7 plugins read-only, resolves @nocobase/*, React, and AntD symbols at runtime, and preserves Powered by NocoBase v2.2.50 attribution under Clause 5.2.',
+          },
+    },
+    {
+      id: 'pg_valkey',
+      title: 'PG16 & Valkey 8.1',
+      sub: ['nocobase_app · 56+ RLS', 'Valkey DB 0 / 1 / 2'],
+      icon: 'database',
+      x: 1004,
+      y: 116,
+      width: 188,
+      height: 92,
+      zoneId: 'cz-runtime',
+      inspector: isVi
+        ? {
+            role: 'Lưu trữ Đa-Tenant Cô lập & Bộ nhớ đệm Phân vùng',
+            packageOrPort: 'pgvector:0.8.1-pg16 (:5432) · valkey:8.1-alpine (:6379)',
+            protocol: 'app.current_org / app.rls_bypass · Valkey DB 0 / 1 / 2',
+            payloadOrSchema: '56 FORCE RLS tables · latticeCustom* · PubSub SSE',
+            responsibilities:
+              'Chạy dưới role nocobase_app (NOBYPASSRLS) cho PostgreSQL 16 và tách Valkey thành DB 0 (cache), DB 1 (SSE PubSub), DB 2 (OIDC PKCE).',
+          }
+        : {
+            role: 'Tenant-Isolated PostgreSQL 16 & Partitioned Valkey 8.1',
+            packageOrPort: 'pgvector:0.8.1-pg16 (:5432) · valkey:8.1-alpine (:6379)',
+            protocol: 'app.current_org / app.rls_bypass · Valkey DB 0 / 1 / 2',
+            payloadOrSchema: '56 FORCE RLS tables · latticeCustom* · PubSub SSE',
+            responsibilities:
+              'Enforces NOBYPASSRLS via nocobase_app in PostgreSQL 16 and partitions Valkey into DB 0 (cache), DB 1 (SSE PubSub), and DB 2 (OIDC).',
+          },
+    },
+  ];
+});
+
+const contractEdges = computed<DiagramEdge[]>(() => [
+  {
+    id: 'ce-1',
+    from: 'src_plugins',
+    to: 'ext_sdk',
+    label: 'Strip',
+    kind: 'primary',
+    points: [
+      [220, 144],
+      [252, 144],
+      [252, 96],
+      [284, 96],
+    ],
+    labelPosition: 0.5,
+    labelOffset: [0, -16],
+  },
+  {
+    id: 'ce-2',
+    from: 'src_plugins',
+    to: 'osi_libs',
+    label: 'Bundle',
+    kind: 'flow',
+    points: [
+      [220, 178],
+      [252, 178],
+      [252, 228],
+      [284, 228],
+    ],
+    labelPosition: 0.5,
+    labelOffset: [0, 16],
+  },
+  {
+    id: 'ce-3',
+    from: 'ext_sdk',
+    to: 'dist_out',
+    kind: 'primary',
+    points: [
+      [484, 96],
+      [506, 96],
+      [506, 144],
+      [528, 144],
+    ],
+  },
+  {
+    id: 'ce-4',
+    from: 'osi_libs',
+    to: 'dist_out',
+    kind: 'flow',
+    points: [
+      [484, 228],
+      [506, 228],
+      [506, 178],
+      [528, 178],
+    ],
+  },
+  {
+    id: 'ce-5',
+    from: 'dist_out',
+    to: 'host_oci',
+    label: 'Mount :ro',
+    kind: 'primary',
+    points: [
+      [700, 162],
+      [788, 162],
+    ],
+  },
+  {
+    id: 'ce-6',
+    from: 'host_oci',
+    to: 'pg_valkey',
+    kind: 'primary',
+    points: [
+      [988, 162],
+      [1004, 162],
+    ],
+  },
+]);
+
+const contractSteps = computed<DiagramStep[]>(() =>
+  locale.value === 'vi'
+    ? [
+        {
+          id: 'cs-1',
+          title: 'Tách Host Externals & Đóng gói Pure-OSI',
+          activeNodes: ['src_plugins', 'ext_sdk', 'osi_libs', 'dist_out'],
+          activeEdges: ['ce-1', 'ce-2', 'ce-3', 'ce-4'],
+          description:
+            '7 plugin @latticedx/* loại trừ @nocobase/*, React 18.2, AntD 5.24 qua nocobase-externals.mjs và đóng gói thư viện MIT/Apache-2.0 vào dist/*.',
+          route: 'scripts/lib/nocobase-externals.mjs -> dist/*',
+          chips: ['sdkProvidedByHost: true', 'esbuild 0.28.2'],
+        },
+        {
+          id: 'cs-2',
+          title: 'Gắn :ro vào NocoBase 2.2.50 -> PG16 & Valkey',
+          activeNodes: ['dist_out', 'host_oci', 'pg_valkey'],
+          activeEdges: ['ce-5', 'ce-6'],
+          description:
+            'Compose gắn dist/* dạng :ro vào /app/nocobase/node_modules/@latticedx/* để container NocoBase giải quyết SDK và kết nối PG16 FORCE RLS / Valkey DB 0-2.',
+          route: '/app/nocobase/node_modules/@latticedx/* (:ro)',
+          chips: ['Read-Only :ro', 'nocobase_app', 'Clause 5.2'],
+        },
+      ]
+    : [
+        {
+          id: 'cs-1',
+          title: 'Split Host Externals vs Pure-OSI Bundle',
+          activeNodes: ['src_plugins', 'ext_sdk', 'osi_libs', 'dist_out'],
+          activeEdges: ['ce-1', 'ce-2', 'ce-3', 'ce-4'],
+          description:
+            'All 7 @latticedx/* plugins strip @nocobase/*, React 18.2, and AntD 5.24 via nocobase-externals.mjs while bundling MIT/Apache-2.0 libs into dist/*.',
+          route: 'scripts/lib/nocobase-externals.mjs -> dist/*',
+          chips: ['sdkProvidedByHost: true', 'esbuild 0.28.2'],
+        },
+        {
+          id: 'cs-2',
+          title: 'Mount :ro into NocoBase 2.2.50 -> Stores',
+          activeNodes: ['dist_out', 'host_oci', 'pg_valkey'],
+          activeEdges: ['ce-5', 'ce-6'],
+          description:
+            'Compose bind-mounts dist/* read-only into /app/nocobase/node_modules/@latticedx/* so the host resolves SDK symbols and runs against PG16 FORCE RLS and Valkey DB 0-2.',
+          route: '/app/nocobase/node_modules/@latticedx/* (:ro)',
+          chips: ['Read-Only :ro', 'nocobase_app', 'Clause 5.2'],
+        },
+      ],
+);
+
+const domainZones = computed<DiagramZone[]>(() =>
+  locale.value === 'vi'
+    ? [
+        {
+          id: 'grp-core',
+          label: 'NHÓM A · LÕI, XÁC THỰC & CẦU NỐI',
+          x: 16,
+          y: 14,
+          width: 644,
+          height: 114,
+          kind: 'admin',
+        },
+        {
+          id: 'grp-ui',
+          label: 'NHÓM B · GIAO DIỆN V2 & STUDIO TỰ ĐỘNG HÓA',
+          x: 16,
+          y: 140,
+          width: 644,
+          height: 114,
+          kind: 'traffic',
+        },
+        {
+          id: 'grp-ai',
+          label: 'NHÓM C · TRI THỨC P.A.R.A. & TÁC NHÂN AI',
+          x: 16,
+          y: 266,
+          width: 644,
+          height: 114,
+          kind: 'admin',
+        },
+        {
+          id: 'grp-runtime',
+          label: 'HOST CONTAINER & KHO DỮ LIỆU CÔ LẬP',
+          x: 728,
+          y: 14,
+          width: 416,
+          height: 366,
+          kind: 'external',
+        },
+      ]
+    : [
+        {
+          id: 'grp-core',
+          label: 'GROUP A · CORE, AUTH & BRIDGE',
+          x: 16,
+          y: 14,
+          width: 644,
+          height: 114,
+          kind: 'admin',
+        },
+        {
+          id: 'grp-ui',
+          label: 'GROUP B · UI BLOCKS & AUTOMATION STUDIO',
+          x: 16,
+          y: 140,
+          width: 644,
+          height: 114,
+          kind: 'traffic',
+        },
+        {
+          id: 'grp-ai',
+          label: 'GROUP C · KNOWLEDGE & AI WORKFORCE',
+          x: 16,
+          y: 266,
+          width: 644,
+          height: 114,
+          kind: 'admin',
+        },
+        {
+          id: 'grp-runtime',
+          label: 'OCI HOST & ISOLATED DATA STORES',
+          x: 728,
+          y: 14,
+          width: 416,
+          height: 366,
+          kind: 'external',
+        },
+      ],
+);
+
+const domainNodes = computed<DiagramNode[]>(() => {
+  const isVi = locale.value === 'vi';
+  return [
+    // Group A (rightmost = p-foundation at x: 440)
+    {
+      id: 'p-bridge',
+      title: 'Action Bridge',
+      sub: ['plugin-action-bridge', 'dxActions · PKCE Link'],
+      icon: 'plug',
+      x: 28,
+      y: 48,
+      width: 184,
+      height: 66,
+      zoneId: 'grp-core',
+      inspector: isVi
+        ? {
+            role: 'Cầu nối Hành động & Liên kết PKCE /lattice/*',
+            packageOrPort: '@latticedx/plugin-action-bridge · v0.4.2',
+            protocol: 'server.cjs · client-v2 · dxActions (13)',
+            payloadOrSchema: 'dist/externalVersion.js | DX_BRIDGE_*',
+            responsibilities:
+              'Cung cấp proxy PKCE phía server và 13 hành động cầu nối từ giao diện sang runtime NocoBase 2.2.50.',
           }
         : {
             role: 'Action Execution & Studio Bridge Plugin',
             packageOrPort: '@latticedx/plugin-action-bridge · v0.4.2',
-            protocol: 'server.cjs (bridge.cjs / studio.cjs) · client-v2',
-            payloadOrSchema: 'dist/externalVersion.js | @nocobase/server',
+            protocol: 'server.cjs · client-v2 · dxActions (13)',
+            payloadOrSchema: 'dist/externalVersion.js | DX_BRIDGE_*',
             responsibilities:
-              'Bridges studio and action endpoints into NocoBase 2.2.50 using generated externalVersion metadata for host SDK resolution.',
+              'Provides server-side PKCE linking proxy and 13 bridge actions into NocoBase 2.2.50 with externalVersion metadata.',
           },
     },
     {
-      id: 'p-dxos-para',
-      title: isVi ? 'Không gian PARA' : 'P.A.R.A. Space',
-      sub: 'plugin-dxos-para',
-      icon: 'file-text',
-      x: 240,
-      y: 52,
-      width: 192,
-      height: 64,
-      zoneId: 'plugins-zone',
-      inspector: isVi
-        ? {
-            role: 'Quản trị Kho Tri thức P.A.R.A. & Tìm kiếm Tài liệu',
-            packageOrPort: '@latticedx/plugin-dxos-para · v0.4.2',
-            protocol: 'DxosParaPlugin · DxosParaClientV2',
-            payloadOrSchema: 'latticeParaDocuments | latticePara:*',
-            responsibilities:
-              'Tổ chức tài liệu theo 4 khu vực Projects/Areas/Resources/Archives phục vụ tra cứu ngữ cảnh doanh nghiệp.',
-          }
-        : {
-            role: 'P.A.R.A. Knowledge Organization Plugin',
-            packageOrPort: '@latticedx/plugin-dxos-para · v0.4.2',
-            protocol: 'DxosParaPlugin · DxosParaClientV2',
-            payloadOrSchema: 'latticeParaDocuments | latticePara:*',
-            responsibilities:
-              'Organizes operational knowledge across Projects, Areas, Resources, and Archives with tenant-scoped collections.',
-          },
-    },
-    {
-      id: 'p-dxos-blocks',
-      title: isVi ? '12 Block v2' : 'Native Blocks',
-      sub: 'plugin-dxos-blocks',
-      icon: 'box',
-      x: 448,
-      y: 52,
-      width: 192,
-      height: 64,
-      zoneId: 'plugins-zone',
-      inspector: isVi
-        ? {
-            role: '12 Native v2 BlockModels, WebGIS & Creative Studio',
-            packageOrPort: '@latticedx/plugin-dxos-blocks · v0.4.2',
-            protocol: 'esbuild 0.28.2 UMD (maplibre-gl@6.19.0 bundled)',
-            payloadOrSchema: 'dxosBlocks:* · DxosWebGisBlockModel · DxosWmsOpsBlockModel',
-            responsibilities:
-              'Đăng ký 12 FlowEngine BlockModels (KPI, Telemetry, WebGIS MapLibre, Kanban, FEFO WMS, BI Chart) giữ nguyên externals host.',
-          }
-        : {
-            role: '12 Native v2 BlockModels, WebGIS & BI Charts',
-            packageOrPort: '@latticedx/plugin-dxos-blocks · v0.4.2',
-            protocol: 'esbuild 0.28.2 UMD (maplibre-gl@6.19.0 bundled)',
-            payloadOrSchema: 'dxosBlocks:* · DxosWebGisBlockModel · DxosWmsOpsBlockModel',
-            responsibilities:
-              'Registers 12 FlowEngine v2 BlockModels including MapLibre WebGIS, FEFO warehouse operations, Creative Studio, and BI charts.',
-          },
-    },
-    {
-      id: 'p-dxos-ai',
-      title: 'DX-OS AI Studio',
-      sub: 'plugin-dxos-ai',
-      icon: 'bot',
-      x: 656,
-      y: 52,
-      width: 192,
-      height: 64,
-      zoneId: 'plugins-zone',
-      inspector: isVi
-        ? {
-            role: 'AI Workforce, App Builder 2.0, MCP & A2A Gateway',
-            packageOrPort: '@latticedx/plugin-dxos-ai · v0.4.2',
-            protocol: 'DxosAiPlugin · JSON-RPC 2.0 · SSE · pgvector',
-            payloadOrSchema: 'dxosAi:* | /api/dxos-mcp | /api/dxos-a2a | 7 Profiles',
-            responsibilities:
-              'Cung cấp 7 Agent Profiles, 20 Unified Tools, App Builder 2.0 (plan/build/patch/rollback), RAG lai RRF và cổng MCP/A2A.',
-          }
-        : {
-            role: 'AI Workforce, App Builder 2.0, MCP & A2A Gateway',
-            packageOrPort: '@latticedx/plugin-dxos-ai · v0.4.2',
-            protocol: 'DxosAiPlugin · JSON-RPC 2.0 · SSE · pgvector',
-            payloadOrSchema: 'dxosAi:* | /api/dxos-mcp | /api/dxos-a2a | 7 Profiles',
-            responsibilities:
-              'Hosts 7 Agent Profiles, 20 audited Unified Tools, App Builder 2.0 lifecycle, hybrid pgvector RAG, and MCP/A2A endpoints.',
-          },
-    },
-    {
-      id: 'p-enterprise-auth',
-      title: isVi ? 'Xác thực OIDC' : 'Enterprise Auth',
-      sub: 'plugin-enterprise-auth',
+      id: 'p-auth',
+      title: isVi ? 'Enterprise Auth' : 'Enterprise Auth',
+      sub: ['plugin-enterprise-auth', 'OIDC PKCE · Valkey DB 2'],
       icon: 'key',
-      x: 32,
-      y: 148,
-      width: 256,
-      height: 64,
-      zoneId: 'plugins-zone',
+      x: 226,
+      y: 48,
+      width: 200,
+      height: 66,
+      zoneId: 'grp-core',
       inspector: isVi
         ? {
             role: 'Đăng nhập SSO Keycloak OIDC / PKCE S256',
@@ -238,13 +519,13 @@ const mountNodes = computed<DiagramNode[]>(() => {
     {
       id: 'p-foundation',
       title: isVi ? 'Lõi Foundation' : 'Foundation Core',
-      sub: 'plugin-lattice-foundation',
+      sub: ['plugin-lattice-foundation', 'RLS · Ledger · Portals'],
       icon: 'layers',
-      x: 312,
-      y: 148,
-      width: 256,
-      height: 64,
-      zoneId: 'plugins-zone',
+      x: 440,
+      y: 48,
+      width: 208,
+      height: 66,
+      zoneId: 'grp-core',
       focal: true,
       inspector: isVi
         ? {
@@ -264,19 +545,48 @@ const mountNodes = computed<DiagramNode[]>(() => {
               'Installs the AsyncLocalStorage RLS bridge, Ed25519 Merkle ledger, ldx_pat_* API keys, multi-portal routing, and OTel/Prometheus.',
           },
     },
+    // Group B
     {
-      id: 'p-dxos-studio',
-      title: 'Admin Studio',
-      sub: 'plugin-dxos-studio',
-      icon: 'workflow',
-      x: 592,
-      y: 148,
-      width: 256,
-      height: 64,
-      zoneId: 'plugins-zone',
+      id: 'p-blocks',
+      title: isVi ? '12 Block v2 & IIoT' : 'Native Blocks & IIoT',
+      sub: ['plugin-dxos-blocks', '12 BlockModels · MapLibre · Twin'],
+      icon: 'box',
+      x: 28,
+      y: 174,
+      width: 300,
+      height: 66,
+      zoneId: 'grp-ui',
       inspector: isVi
         ? {
-            role: 'LatticeFlow v2, Visual DMN, n8n, WMS & Schema Studio',
+            role: '12 Native v2 BlockModels, WebGIS & Bản sao số IIoT',
+            packageOrPort: '@latticedx/plugin-dxos-blocks · v0.4.2',
+            protocol: 'esbuild 0.28.2 UMD (maplibre-gl@6.19.0 bundled)',
+            payloadOrSchema: 'dxosBlocks:* (17) · dxosBroker:* (10)',
+            responsibilities:
+              'Đăng ký 12 FlowEngine BlockModels (KPI, Telemetry, WebGIS MapLibre, Kanban, FEFO WMS, BI Chart) và điều phối IIoT Digital Twin.',
+          }
+        : {
+            role: '12 Native v2 BlockModels, WebGIS & IIoT Broker',
+            packageOrPort: '@latticedx/plugin-dxos-blocks · v0.4.2',
+            protocol: 'esbuild 0.28.2 UMD (maplibre-gl@6.19.0 bundled)',
+            payloadOrSchema: 'dxosBlocks:* (17) · dxosBroker:* (10)',
+            responsibilities:
+              'Registers 12 FlowEngine v2 BlockModels including MapLibre WebGIS and BI charts alongside dxosBroker IIoT Digital Twin APIs.',
+          },
+    },
+    {
+      id: 'p-studio',
+      title: 'Admin Studio',
+      sub: ['plugin-dxos-studio', 'LatticeFlow · DMN · n8n · WMS'],
+      icon: 'workflow',
+      x: 348,
+      y: 174,
+      width: 300,
+      height: 66,
+      zoneId: 'grp-ui',
+      inspector: isVi
+        ? {
+            role: 'LatticeFlow v2, Visual DMN, n8n, WMS & Rich Schema',
             packageOrPort: '@latticedx/plugin-dxos-studio · v0.4.2',
             protocol: 'esbuild 0.28.2 UMD (@xyflow/react + @dagrejs/dagre)',
             payloadOrSchema: 'dxosAutomations:* | dxosDmn:* | dxosWms:* | dxosN8n:*',
@@ -292,619 +602,236 @@ const mountNodes = computed<DiagramNode[]>(() => {
               'Powers the 24-node LatticeFlow DAG, Visual DMN FEEL engine, 22-function Safe AST formulas, FEFO WMS, ePOD QR, and n8n REST bridge.',
           },
     },
+    // Group C
     {
-      id: 'host-nocobase',
-      title: isVi ? 'Host NocoBase' : 'NocoBase Host',
-      sub: 'nocobase/nocobase:2.2.50 · :80',
-      icon: 'server',
-      x: 36,
-      y: 292,
-      width: 340,
-      height: 68,
-      zoneId: 'host-zone',
-      focal: true,
-      inspector: isVi
-        ? {
-            role: 'Container Host Độc lập Cung cấp SDK Thời điểm Chạy',
-            packageOrPort: 'nocobase/nocobase:2.2.50@sha256:04b751... · :80',
-            protocol: 'sdkProvidedByHost: true · Read-Only Bind Mount (:ro)',
-            payloadOrSchema: '@nocobase/server, database, client, client-v2, auth, workflow',
-            responsibilities:
-              'Nạp 7 plugin từ /app/nocobase/node_modules/@latticedx/* (:ro), cung cấp React 18.2 / AntD 5.24.2 / SDK và giữ nguyên Điều 5.2.',
-          }
-        : {
-            role: 'External OCI Host Providing Runtime SDK Externals',
-            packageOrPort: 'nocobase/nocobase:2.2.50@sha256:04b751... · :80',
-            protocol: 'sdkProvidedByHost: true · Read-Only Bind Mount (:ro)',
-            payloadOrSchema: '@nocobase/server, database, client, client-v2, auth, workflow',
-            responsibilities:
-              'Mounts all 7 plugins read-only at /app/nocobase/node_modules/@latticedx/*, injects shared host externals, and preserves Clause 5.2.',
-          },
-    },
-    {
-      id: 'data-pg-valkey',
-      title: 'PG16 & Valkey 8.1',
-      sub: 'nocobase_app · 56 FORCE RLS · DB 0-2',
-      icon: 'database',
-      x: 504,
-      y: 292,
-      width: 340,
-      height: 68,
-      zoneId: 'data-zone',
-      inspector: isVi
-        ? {
-            role: 'Lưu trữ Đa-Tenant Cô lập & Bộ nhớ đệm Phân vùng',
-            packageOrPort: 'pgvector:0.8.1-pg16 (:5432) · valkey:8.1-alpine (:6379)',
-            protocol: 'app.current_org / app.rls_bypass · Valkey DB 0 / 1 / 2',
-            payloadOrSchema: '56 FORCE RLS tables · latticeCustom* · PubSub surface-updates',
-            responsibilities:
-              'Chạy dưới role nocobase_app (NOBYPASSRLS) cho PostgreSQL 16 và tách Valkey thành DB 0 (cache), DB 1 (SSE PubSub), DB 2 (OIDC PKCE).',
-          }
-        : {
-            role: 'Tenant-Isolated PostgreSQL 16 & Partitioned Valkey 8.1',
-            packageOrPort: 'pgvector:0.8.1-pg16 (:5432) · valkey:8.1-alpine (:6379)',
-            protocol: 'app.current_org / app.rls_bypass · Valkey DB 0 / 1 / 2',
-            payloadOrSchema: '56 FORCE RLS tables · latticeCustom* · PubSub surface-updates',
-            responsibilities:
-              'Enforces NOBYPASSRLS via nocobase_app in PostgreSQL 16 and separates Valkey into DB 0 (cache), DB 1 (SSE PubSub), and DB 2 (OIDC).',
-          },
-    },
-  ];
-});
-
-const mountEdges = computed<DiagramEdge[]>(() => [
-  {
-    id: 'ph-bridge',
-    from: 'p-action-bridge',
-    to: 'host-nocobase',
-    kind: 'flow',
-    points: [
-      [128, 116],
-      [128, 132],
-      [300, 132],
-      [300, 244],
-      [84, 244],
-      [84, 292],
-    ],
-  },
-  {
-    id: 'ph-para',
-    from: 'p-dxos-para',
-    to: 'host-nocobase',
-    kind: 'flow',
-    points: [
-      [336, 116],
-      [336, 132],
-      [300, 132],
-      [300, 244],
-      [148, 244],
-      [148, 292],
-    ],
-  },
-  {
-    id: 'ph-blocks',
-    from: 'p-dxos-blocks',
-    to: 'host-nocobase',
-    kind: 'flow',
-    points: [
-      [544, 116],
-      [544, 132],
-      [580, 132],
-      [580, 244],
-      [212, 244],
-      [212, 292],
-    ],
-  },
-  {
-    id: 'ph-ai',
-    from: 'p-dxos-ai',
-    to: 'host-nocobase',
-    kind: 'primary',
-    points: [
-      [752, 116],
-      [752, 132],
-      [580, 132],
-      [580, 244],
-      [276, 244],
-      [276, 292],
-    ],
-  },
-  {
-    id: 'ph-auth',
-    from: 'p-enterprise-auth',
-    to: 'host-nocobase',
-    kind: 'flow',
-    points: [
-      [160, 212],
-      [160, 244],
-      [116, 244],
-      [116, 292],
-    ],
-  },
-  {
-    id: 'ph-foundation',
-    from: 'p-foundation',
-    to: 'host-nocobase',
-    kind: 'primary',
-    points: [
-      [440, 212],
-      [440, 244],
-      [244, 244],
-      [244, 292],
-    ],
-  },
-  {
-    id: 'ph-studio',
-    from: 'p-dxos-studio',
-    to: 'host-nocobase',
-    kind: 'primary',
-    points: [
-      [720, 212],
-      [720, 244],
-      [324, 244],
-      [324, 292],
-    ],
-  },
-  {
-    id: 'ph-host-data',
-    from: 'host-nocobase',
-    to: 'data-pg-valkey',
-    label: 'app.current_org',
-    kind: 'primary',
-    points: [
-      [376, 324],
-      [504, 324],
-    ],
-  },
-]);
-
-const mountSteps = computed<DiagramStep[]>(() =>
-  locale.value === 'vi'
-    ? [
-        {
-          id: 'ms-1',
-          title: 'Gắn chỉ đọc 7 Plugin vào Host OCI',
-          activeNodes: [
-            'p-action-bridge',
-            'p-dxos-para',
-            'p-dxos-blocks',
-            'p-dxos-ai',
-            'p-enterprise-auth',
-            'p-foundation',
-            'p-dxos-studio',
-            'host-nocobase',
-          ],
-          activeEdges: [
-            'ph-bridge',
-            'ph-para',
-            'ph-blocks',
-            'ph-ai',
-            'ph-auth',
-            'ph-foundation',
-            'ph-studio',
-          ],
-          description:
-            'Compose gắn cả 7 thư mục plugins/nocobase/* dạng :ro vào /app/nocobase/node_modules/@latticedx/* của image ngoài nocobase/nocobase:2.2.50.',
-          route: 'sdkProvidedByHost: true · v0.4.2',
-          chips: ['7 Plugins', 'Read-Only Mount', 'Clause 5.2'],
-        },
-        {
-          id: 'ms-2',
-          title: 'Lớp Lõi Foundation & Xác thực OIDC',
-          activeNodes: ['p-foundation', 'p-enterprise-auth', 'host-nocobase', 'data-pg-valkey'],
-          activeEdges: ['ph-foundation', 'ph-auth', 'ph-host-data'],
-          description:
-            'plugin-lattice-foundation thiết lập ngữ cảnh RLS app.current_org trên PG16, trong khi plugin-enterprise-auth quản lý vé PKCE ở Valkey DB 2.',
-          route: 'pg-rls.js + enterpriseAuth:callback',
-          payload: "set_config('app.current_org', :orgId, true)",
-          chips: ['56 FORCE RLS', 'nocobase_app', 'Valkey DB 2'],
-        },
-        {
-          id: 'ms-3',
-          title: 'Khối Giao diện v2, Studio & AI Workforce',
-          activeNodes: ['p-dxos-blocks', 'p-dxos-studio', 'p-dxos-ai', 'p-dxos-para', 'host-nocobase'],
-          activeEdges: ['ph-blocks', 'ph-studio', 'ph-ai', 'ph-para'],
-          description:
-            'Các plugin client-v2 và server mở rộng FlowEngine 12 BlockModels, LatticeFlow v2, DMN, P.A.R.A. và 20 Unified Tools qua SDK của host.',
-          route: 'dist/client-v2/index.js + dist/server/index.js',
-          chips: ['12 BlockModels', '24 DAG Nodes', '20 AI Tools'],
-        },
-      ]
-    : [
-        {
-          id: 'ms-1',
-          title: 'Read-Only Mount of All 7 Plugins',
-          activeNodes: [
-            'p-action-bridge',
-            'p-dxos-para',
-            'p-dxos-blocks',
-            'p-dxos-ai',
-            'p-enterprise-auth',
-            'p-foundation',
-            'p-dxos-studio',
-            'host-nocobase',
-          ],
-          activeEdges: [
-            'ph-bridge',
-            'ph-para',
-            'ph-blocks',
-            'ph-ai',
-            'ph-auth',
-            'ph-foundation',
-            'ph-studio',
-          ],
-          description:
-            'Compose bind-mounts all 7 plugins/nocobase/* directories read-only into /app/nocobase/node_modules/@latticedx/* inside nocobase/nocobase:2.2.50.',
-          route: 'sdkProvidedByHost: true · v0.4.2',
-          chips: ['7 Plugins', 'Read-Only Mount', 'Clause 5.2'],
-        },
-        {
-          id: 'ms-2',
-          title: 'Foundation RLS & Enterprise Auth',
-          activeNodes: ['p-foundation', 'p-enterprise-auth', 'host-nocobase', 'data-pg-valkey'],
-          activeEdges: ['ph-foundation', 'ph-auth', 'ph-host-data'],
-          description:
-            'plugin-lattice-foundation binds transaction-local app.current_org under nocobase_app while plugin-enterprise-auth stores PKCE state in Valkey DB 2.',
-          route: 'pg-rls.js + enterpriseAuth:callback',
-          payload: "set_config('app.current_org', :orgId, true)",
-          chips: ['56 FORCE RLS', 'nocobase_app', 'Valkey DB 2'],
-        },
-        {
-          id: 'ms-3',
-          title: 'Blocks v2, Studio & AI Workforce',
-          activeNodes: ['p-dxos-blocks', 'p-dxos-studio', 'p-dxos-ai', 'p-dxos-para', 'host-nocobase'],
-          activeEdges: ['ph-blocks', 'ph-studio', 'ph-ai', 'ph-para'],
-          description:
-            'Server and client-v2 entrypoints register 12 native BlockModels, LatticeFlow v2, Visual DMN, P.A.R.A. spaces, and 20 AI tools against host externals.',
-          route: 'dist/client-v2/index.js + dist/server/index.js',
-          chips: ['12 BlockModels', '24 DAG Nodes', '20 AI Tools'],
-        },
-      ],
-);
-
-const contractZones = computed<DiagramZone[]>(() =>
-  locale.value === 'vi'
-    ? [
-        {
-          id: 'cz-build',
-          label: 'Chuỗi Đóng gói Plugin (esbuild 0.28.2 & nocobase-externals.mjs)',
-          x: 16,
-          y: 12,
-          width: 888,
-          height: 212,
-          kind: 'admin',
-        },
-        {
-          id: 'cz-runtime',
-          label: 'Liên kết Runtime & Tuân thủ Điều 5.2',
-          x: 16,
-          y: 248,
-          width: 888,
-          height: 136,
-          kind: 'external',
-        },
-      ]
-    : [
-        {
-          id: 'cz-build',
-          label: 'Plugin Build Pipeline (esbuild 0.28.2 & nocobase-externals.mjs)',
-          x: 16,
-          y: 12,
-          width: 888,
-          height: 212,
-          kind: 'admin',
-        },
-        {
-          id: 'cz-runtime',
-          label: 'Runtime Resolution & Clause 5.2 Attribution',
-          x: 16,
-          y: 248,
-          width: 888,
-          height: 136,
-          kind: 'external',
-        },
-      ],
-);
-
-const contractNodes = computed<DiagramNode[]>(() => {
-  const isVi = locale.value === 'vi';
-  return [
-    {
-      id: 'c-src',
-      title: isVi ? 'Mã nguồn Plugin' : 'Plugin Sources',
-      sub: 'src/server · client-v2',
+      id: 'p-para',
+      title: isVi ? 'Tri thức P.A.R.A.' : 'P.A.R.A. Knowledge',
+      sub: ['plugin-dxos-para', 'PDF/Office · Hybrid RAG RRF'],
       icon: 'file-text',
-      x: 32,
-      y: 88,
-      width: 204,
-      height: 64,
-      zoneId: 'cz-build',
+      x: 28,
+      y: 300,
+      width: 300,
+      height: 66,
+      zoneId: 'grp-ai',
       inspector: isVi
         ? {
-            role: 'Mã nguồn Apache-2.0 độc lập hoàn toàn với upstream',
-            packageOrPort: 'plugins/nocobase/*/package.json (v0.4.2)',
-            protocol: 'SPDX Apache-2.0 · supportedVersions: 2.2.x',
-            payloadOrSchema: 'sdkProvidedByHost: true · testedRuntime: 2.2.50',
+            role: 'Kho Tri thức P.A.R.A. & Tìm kiếm Lai RRF',
+            packageOrPort: '@latticedx/plugin-dxos-para · v0.4.2',
+            protocol: 'DxosParaPlugin · pgvector + GIN tsvector (k=60)',
+            payloadOrSchema: 'latticeParaDocuments | latticeParaChunks | latticePara:*',
             responsibilities:
-              'Mỗi plugin khai báo rõ sdkProvidedByHost: true, có LICENSE/README riêng và tách biệt hai nhánh xử lý khi biên dịch esbuild.',
+              'Tổ chức tài liệu theo Projects/Areas/Resources/Archives, trích xuất PDF/Office và tìm kiếm ngữ cảnh lai RRF theo RLS.',
           }
         : {
-            role: 'Standalone Apache-2.0 Plugin Source Trees',
-            packageOrPort: 'plugins/nocobase/*/package.json (v0.4.2)',
-            protocol: 'SPDX Apache-2.0 · supportedVersions: 2.2.x',
-            payloadOrSchema: 'sdkProvidedByHost: true · testedRuntime: 2.2.50',
+            role: 'P.A.R.A. Knowledge Organization & Hybrid RAG',
+            packageOrPort: '@latticedx/plugin-dxos-para · v0.4.2',
+            protocol: 'DxosParaPlugin · pgvector + GIN tsvector (k=60)',
+            payloadOrSchema: 'latticeParaDocuments | latticeParaChunks | latticePara:*',
             responsibilities:
-              'Each plugin declares sdkProvidedByHost: true with its own LICENSE and splits into externalized host SDKs and bundled Pure-OSI libs.',
+              'Organizes knowledge across Projects/Areas/Resources/Archives, extracts PDF/Office content, and executes RLS-scoped RRF search.',
           },
     },
     {
-      id: 'c-externals',
-      title: 'Host Externals',
-      sub: '@nocobase/* · React · AntD',
-      icon: 'shield',
-      x: 328,
-      y: 44,
-      width: 228,
-      height: 60,
-      zoneId: 'cz-build',
-      focal: true,
+      id: 'p-ai',
+      title: 'DX-OS AI Studio',
+      sub: ['plugin-dxos-ai', '7 Profiles · 20 Tools · MCP/A2A'],
+      icon: 'bot',
+      x: 348,
+      y: 300,
+      width: 300,
+      height: 66,
+      zoneId: 'grp-ai',
       inspector: isVi
         ? {
-            role: 'Loại trừ SDK NocoBase và vendor UI khỏi bundle plugin',
-            packageOrPort: 'scripts/lib/nocobase-externals.mjs',
-            protocol: 'react@18.2.0 · antd@5.24.2 · @nocobase/*',
-            payloadOrSchema: 'Stripped at build time (externalized)',
+            role: 'AI Workforce, App Builder 2.0, MCP & A2A Gateway',
+            packageOrPort: '@latticedx/plugin-dxos-ai · v0.4.2',
+            protocol: 'DxosAiPlugin · JSON-RPC 2.0 · SSE · OTel GenAI',
+            payloadOrSchema: 'dxosAi:* | /api/dxos-mcp | /api/dxos-a2a | 7 Profiles',
             responsibilities:
-              'Loại trừ 7 gói @nocobase/* và React/AntD khỏi bản build để runtime host cung cấp trực tiếp, không đóng gói chép lại.',
+              'Cung cấp 7 Agent Profiles, 20 Unified Tools (+4 IT/OT MCP), App Builder 2.0 (plan/build/patch/rollback) và cổng MCP/A2A.',
           }
         : {
-            role: 'Host Vendor & SDK Externals (Stripped at Build)',
-            packageOrPort: 'scripts/lib/nocobase-externals.mjs',
-            protocol: 'react@18.2.0 · antd@5.24.2 · @nocobase/*',
-            payloadOrSchema: 'Stripped at build time (externalized)',
+            role: 'AI Workforce, App Builder 2.0, MCP & A2A Gateway',
+            packageOrPort: '@latticedx/plugin-dxos-ai · v0.4.2',
+            protocol: 'DxosAiPlugin · JSON-RPC 2.0 · SSE · OTel GenAI',
+            payloadOrSchema: 'dxosAi:* | /api/dxos-mcp | /api/dxos-a2a | 7 Profiles',
             responsibilities:
-              'Marks React, AntD, and 7 @nocobase/* SDK packages external so esbuild strips them and resolves symbols from the host container.',
+              'Hosts 7 Agent Profiles, 20 audited Unified Tools (+4 IT/OT MCP), App Builder 2.0 lifecycle, and MCP/A2A endpoints.',
           },
     },
+    // Right Runtime & Data Stores
     {
-      id: 'c-bundled',
-      title: isVi ? 'Thư viện Pure-OSI' : 'Bundled Pure-OSI Libs',
-      sub: 'openid · maplibre · xyflow',
-      icon: 'box',
-      x: 328,
-      y: 136,
-      width: 228,
-      height: 60,
-      zoneId: 'cz-build',
-      inspector: isVi
-        ? {
-            role: 'Đóng gói Thư viện Chuyên biệt Thuần OSI song song',
-            packageOrPort: 'openid-client · maplibre-gl · @xyflow/react',
-            protocol: 'MIT / Apache-2.0 Bundled UMD & CJS',
-            payloadOrSchema: 'openid-client@6.8.9 | maplibre-gl@6.19.0 | @xyflow/react@12.12.1',
-            responsibilities:
-              'Đóng gói nội bộ riêng các thư viện MIT/Apache-2.0 cần thiết vào dist/* độc lập với nhánh Host Externals.',
-          }
-        : {
-            role: 'Parallel Self-Contained Pure-OSI Dependency Bundles',
-            packageOrPort: 'openid-client · maplibre-gl · @xyflow/react',
-            protocol: 'MIT / Apache-2.0 Bundled UMD & CJS',
-            payloadOrSchema: 'openid-client@6.8.9 | maplibre-gl@6.19.0 | @xyflow/react@12.12.1',
-            responsibilities:
-              'Bundles MIT/Apache-2.0 libraries (openid-client, maplibre-gl, @xyflow/react) directly into dist/* alongside externalized host references.',
-          },
-    },
-    {
-      id: 'c-dist',
-      title: isVi ? 'Đầu ra dist/*' : 'Compiled dist/*',
-      sub: 'server · client · client-v2',
-      icon: 'terminal',
-      x: 648,
-      y: 88,
-      width: 240,
-      height: 64,
-      zoneId: 'cz-build',
-      inspector: isVi
-        ? {
-            role: 'Điểm vào Đã Biên dịch Hội tụ Sẵn sàng Gắn Host',
-            packageOrPort: 'dist/server/index.js · dist/client-v2/index.js',
-            protocol: 'CommonJS / UMD · externalVersion.js',
-            payloadOrSchema: 'action-bridge/dist/externalVersion.js',
-            responsibilities:
-              'Hợp nhất các tham chiếu external tới Host SDK và các gói Pure-OSI đã đóng gói thành artifact dist/* gắn :ro vào NocoBase.',
-          }
-        : {
-            role: 'Host-Ready Compiled Plugin Entrypoints',
-            packageOrPort: 'dist/server/index.js · dist/client-v2/index.js',
-            protocol: 'CommonJS / UMD · externalVersion.js',
-            payloadOrSchema: 'action-bridge/dist/externalVersion.js',
-            responsibilities:
-              'Converges externalized @nocobase/* import shims and bundled Pure-OSI libs into dist/* artifacts mounted :ro into NocoBase.',
-          },
-    },
-    {
-      id: 'c-host',
+      id: 'rt-host',
       title: 'NocoBase 2.2.50',
-      sub: 'node_modules/@latticedx/*',
+      sub: ['7 Plugins (:ro)', 'sdkProvidedByHost'],
       icon: 'server',
-      x: 108,
-      y: 292,
-      width: 256,
-      height: 64,
-      zoneId: 'cz-runtime',
+      x: 748,
+      y: 167,
+      width: 176,
+      height: 80,
+      zoneId: 'grp-runtime',
       focal: true,
       inspector: isVi
         ? {
-            role: 'Runtime Host Giải quyết Phụ thuộc Ngoại tuyến (:ro Mount)',
-            packageOrPort: 'nocobase/nocobase:2.2.50 · :ro mount',
-            protocol: 'OCI Container · Read-Only Plugin Bindings',
+            role: 'Container Host Nạp 7 Plugin (:ro) & Giữ Điều 5.2',
+            packageOrPort: 'nocobase/nocobase:2.2.50 · :80',
+            protocol: 'Read-Only Bind Mount (:ro) · Clause 5.2',
             payloadOrSchema: '/app/nocobase/node_modules/@latticedx/*',
             responsibilities:
-              'Cung cấp các module @nocobase/* từ trong container host khi 7 plugin khởi động và đăng ký tài nguyên API.',
+              'Khởi chạy cả 7 plugin gắn chỉ đọc, cung cấp React/AntD/@nocobase/* từ host và giữ nguyên hiển thị Powered by NocoBase v2.2.50 theo Điều 5.2.',
           }
         : {
-            role: 'External Host Container Resolving SDK Imports (:ro Mount)',
-            packageOrPort: 'nocobase/nocobase:2.2.50 · :ro mount',
-            protocol: 'OCI Container · Read-Only Plugin Bindings',
+            role: 'OCI Host Mounting 7 Plugins (:ro) & Preserving Clause 5.2',
+            packageOrPort: 'nocobase/nocobase:2.2.50 · :80',
+            protocol: 'Read-Only Bind Mount (:ro) · Clause 5.2',
             payloadOrSchema: '/app/nocobase/node_modules/@latticedx/*',
             responsibilities:
-              'Provides @nocobase/* runtime dependencies inside the container when all 7 read-only plugins initialize.',
+              'Loads all 7 read-only plugins, provides host React/AntD/@nocobase/* externals, and preserves Powered by NocoBase v2.2.50 attribution under Clause 5.2.',
           },
     },
     {
-      id: 'c-clause52',
-      title: isVi ? 'Ghi nhận Điều 5.2' : 'Clause 5.2 Attribution',
-      sub: 'Powered by NocoBase v2.2.50',
-      icon: 'check-circle',
-      x: 520,
-      y: 292,
-      width: 264,
-      height: 64,
-      zoneId: 'cz-runtime',
+      id: 'rt-data',
+      title: isVi ? 'Kho Dữ liệu Cô lập' : 'Data Stores',
+      sub: ['PG16 FORCE RLS', 'Valkey · RustFS · Orion-LD'],
+      icon: 'database',
+      x: 956,
+      y: 167,
+      width: 172,
+      height: 80,
+      zoneId: 'grp-runtime',
       inspector: isVi
         ? {
-            role: 'Bảo toàn Nhận diện Thương hiệu Nguồn NocoBase',
-            packageOrPort: 'native-portal-settings.js · plugin-dxos-ai',
-            protocol: 'NocoBase License Clause 5.2',
-            payloadOrSchema: 'Powered by NocoBase · v2.2.50 · https://www.nocobase.com',
+            role: 'Hệ thống Lưu trữ & Ngữ cảnh Cô lập',
+            packageOrPort: 'PG16 (nocobase_app) · Valkey 8.1 · RustFS · Orion-LD',
+            protocol: 'FORCE RLS · RESP DB 0/1/2 · S3 · NGSI-LD',
+            payloadOrSchema: '56 Static + latticeCustom* · Scanned Objects',
             responsibilities:
-              'Giữ nguyên hiển thị Powered by NocoBase v2.2.50 và liên kết License settings trên giao diện điều hướng và trang quản trị.',
+              'Lưu trữ toàn bộ dữ liệu nghiệp vụ có cô lập đa tenant FORCE RLS, tệp sạch qua ClamAV, trạng thái OIDC/SSE và thực thể NGSI-LD.',
           }
         : {
-            role: 'Preserved Upstream Clause 5.2 Attribution',
-            packageOrPort: 'native-portal-settings.js · plugin-dxos-ai',
-            protocol: 'NocoBase License Clause 5.2',
-            payloadOrSchema: 'Powered by NocoBase · v2.2.50 · https://www.nocobase.com',
+            role: 'Isolated Persistence & Context Stores',
+            packageOrPort: 'PG16 (nocobase_app) · Valkey 8.1 · RustFS · Orion-LD',
+            protocol: 'FORCE RLS · RESP DB 0/1/2 · S3 · NGSI-LD',
+            payloadOrSchema: '56 Static + latticeCustom* · Scanned Objects',
             responsibilities:
-              'Keeps Powered by NocoBase v2.2.50, upstream URL, and License settings visible and unmodified across portals.',
+              'Persists tenant-isolated tables under FORCE RLS, ClamAV-cleared objects in RustFS, OIDC/SSE state in Valkey, and NGSI-LD twins in Orion-LD.',
           },
     },
   ];
 });
 
-const contractEdges = computed<DiagramEdge[]>(() => [
+const domainEdges = computed<DiagramEdge[]>(() => [
   {
-    id: 'ce-1',
-    from: 'c-src',
-    to: 'c-externals',
-    label: 'Strip SDK',
+    id: 'dm-core',
+    from: 'p-foundation',
+    to: 'rt-host',
     kind: 'primary',
     points: [
-      [236, 108],
-      [280, 108],
-      [280, 74],
-      [328, 74],
+      [648, 81],
+      [700, 81],
+      [700, 187],
+      [748, 187],
     ],
   },
   {
-    id: 'ce-2',
-    from: 'c-src',
-    to: 'c-bundled',
-    label: 'esbuild OSI',
+    id: 'dm-ui',
+    from: 'p-studio',
+    to: 'rt-host',
+    label: 'Mount :ro',
+    kind: 'primary',
+    points: [
+      [648, 207],
+      [748, 207],
+    ],
+  },
+  {
+    id: 'dm-ai',
+    from: 'p-ai',
+    to: 'rt-host',
     kind: 'flow',
     points: [
-      [236, 132],
-      [280, 132],
-      [280, 166],
-      [328, 166],
+      [648, 333],
+      [700, 333],
+      [700, 227],
+      [748, 227],
     ],
   },
   {
-    id: 'ce-3',
-    from: 'c-externals',
-    to: 'c-dist',
-    label: 'externals',
+    id: 'dm-data',
+    from: 'rt-host',
+    to: 'rt-data',
     kind: 'primary',
     points: [
-      [556, 74],
-      [602, 74],
-      [602, 108],
-      [648, 108],
-    ],
-  },
-  {
-    id: 'ce-4',
-    from: 'c-bundled',
-    to: 'c-dist',
-    label: 'bundled',
-    kind: 'flow',
-    points: [
-      [556, 166],
-      [602, 166],
-      [602, 132],
-      [648, 132],
-    ],
-  },
-  {
-    id: 'ce-5',
-    from: 'c-dist',
-    to: 'c-host',
-    label: ':ro Mount',
-    kind: 'primary',
-    points: [
-      [768, 152],
-      [768, 236],
-      [236, 236],
-      [236, 292],
-    ],
-  },
-  {
-    id: 'ce-6',
-    from: 'c-host',
-    to: 'c-clause52',
-    label: 'Clause 5.2',
-    kind: 'dashed',
-    points: [
-      [364, 324],
-      [520, 324],
+      [924, 207],
+      [956, 207],
     ],
   },
 ]);
 
-const contractSteps = computed<DiagramStep[]>(() =>
+const domainSteps = computed<DiagramStep[]>(() =>
   locale.value === 'vi'
     ? [
         {
-          id: 'cs-1',
-          title: 'Tách Host Externals & Đóng gói Pure-OSI Song song',
-          activeNodes: ['c-src', 'c-externals', 'c-bundled', 'c-dist'],
-          activeEdges: ['ce-1', 'ce-2', 'ce-3', 'ce-4'],
+          id: 'ds-core',
+          title: 'Nhóm A · Lõi Foundation, Auth & Bridge',
+          activeNodes: ['p-bridge', 'p-auth', 'p-foundation', 'rt-host', 'rt-data'],
+          activeEdges: ['dm-core', 'dm-data'],
           description:
-            'Plugin Sources tách song song thành Host Externals (@nocobase/*, React, AntD bị loại trừ) và Bundled Pure-OSI Libs (openid-client, maplibre-gl, @xyflow/react), cả hai hội tụ vào dist/*.',
-          route: 'scripts/lib/nocobase-externals.mjs -> dist/*',
-          chips: ['sdkProvidedByHost: true', 'esbuild 0.28.2', 'MIT/Apache-2.0'],
+            'Cung cấp cầu giao dịch PG16 FORCE RLS (56+ bảng), khóa ldx_pat_*, sổ cái Ed25519 Merkle, xác thực Keycloak PKCE (Valkey DB 2) và action bridge.',
+          route: 'Core/Auth Plugins -> NocoBase 2.2.50 -> PG16 / Valkey',
+          chips: ['56 FORCE RLS', 'PKCE S256', 'Ed25519'],
         },
         {
-          id: 'cs-2',
-          title: 'Gắn :ro vào NocoBase 2.2.50 & Giữ Điều 5.2',
-          activeNodes: ['c-dist', 'c-host', 'c-clause52'],
-          activeEdges: ['ce-5', 'ce-6'],
+          id: 'ds-ui',
+          title: 'Nhóm B · 12 Native Blocks & Admin Studio',
+          activeNodes: ['p-blocks', 'p-studio', 'rt-host', 'rt-data'],
+          activeEdges: ['dm-ui', 'dm-data'],
           description:
-            'Các tệp dist/* được gắn chỉ đọc (:ro) vào container nocobase/nocobase:2.2.50 và giữ nguyên nhận diện Powered by NocoBase theo Điều 5.2.',
-          route: '/app/nocobase/node_modules/@latticedx/*',
-          chips: ['Read-Only :ro', 'Clause 5.2', 'Zero Upstream Fork'],
+            'Đăng ký 12 Native BlockModels (MapLibre WebGIS, BI, WMS Ops), 24-node LatticeFlow v2, Visual DMN FEEL, FEFO WMS và cầu nối Stock n8n.',
+          route: 'UI/Studio Plugins -> NocoBase 2.2.50 -> PG16 / Orion-LD',
+          chips: ['12 BlockModels', '24 DAG Nodes', 'FEEL DMN'],
+        },
+        {
+          id: 'ds-ai',
+          title: 'Nhóm C · Tri thức P.A.R.A. & AI Studio',
+          activeNodes: ['p-para', 'p-ai', 'rt-host', 'rt-data'],
+          activeEdges: ['dm-ai', 'dm-data'],
+          description:
+            'Cung cấp trích xuất tài liệu PDF/Office, Hybrid RAG (pgvector + GIN RRF k=60), 7 Agent Profiles, 20+4 công cụ có kiểm toán, App Builder 2.0 và MCP/A2A.',
+          route: 'PARA/AI Plugins -> NocoBase 2.2.50 -> pgvector / PG16',
+          chips: ['RRF k=60', '20+4 Tools', 'App Builder 2.0'],
         },
       ]
     : [
         {
-          id: 'cs-1',
-          title: 'Split Host Externals & Bundle Pure-OSI into dist/*',
-          activeNodes: ['c-src', 'c-externals', 'c-bundled', 'c-dist'],
-          activeEdges: ['ce-1', 'ce-2', 'ce-3', 'ce-4'],
+          id: 'ds-core',
+          title: 'Group A · Core, Auth & Action Bridge',
+          activeNodes: ['p-bridge', 'p-auth', 'p-foundation', 'rt-host', 'rt-data'],
+          activeEdges: ['dm-core', 'dm-data'],
           description:
-            'Plugin Sources split in parallel into Host Externals (@nocobase/*, React, AntD stripped) and Bundled Pure-OSI Libs (openid-client, maplibre-gl, @xyflow/react), both converging into Compiled dist/*.',
-          route: 'scripts/lib/nocobase-externals.mjs -> dist/*',
-          chips: ['sdkProvidedByHost: true', 'esbuild 0.28.2', 'MIT/Apache-2.0'],
+            'Provides the PG16 FORCE RLS bridge (56+ tables), ldx_pat_* API keys, Ed25519 Merkle ledger, Keycloak PKCE (Valkey DB 2), and action bridge.',
+          route: 'Core/Auth Plugins -> NocoBase 2.2.50 -> PG16 / Valkey',
+          chips: ['56 FORCE RLS', 'PKCE S256', 'Ed25519'],
         },
         {
-          id: 'cs-2',
-          title: 'Mount :ro into NocoBase 2.2.50 & Preserve Clause 5.2',
-          activeNodes: ['c-dist', 'c-host', 'c-clause52'],
-          activeEdges: ['ce-5', 'ce-6'],
+          id: 'ds-ui',
+          title: 'Group B · Native Blocks & Admin Studio',
+          activeNodes: ['p-blocks', 'p-studio', 'rt-host', 'rt-data'],
+          activeEdges: ['dm-ui', 'dm-data'],
           description:
-            'Compiled dist/* artifacts mount read-only (:ro) into nocobase/nocobase:2.2.50 while keeping Powered by NocoBase v2.2.50 attribution intact.',
-          route: '/app/nocobase/node_modules/@latticedx/*',
-          chips: ['Read-Only :ro', 'Clause 5.2', 'Zero Upstream Fork'],
+            'Registers 12 Native BlockModels (MapLibre WebGIS, BI, WMS Ops), 24-node LatticeFlow v2, Visual DMN FEEL, FEFO WMS, and Stock n8n REST sync.',
+          route: 'UI/Studio Plugins -> NocoBase 2.2.50 -> PG16 / Orion-LD',
+          chips: ['12 BlockModels', '24 DAG Nodes', 'FEEL DMN'],
+        },
+        {
+          id: 'ds-ai',
+          title: 'Group C · P.A.R.A. Knowledge & AI Studio',
+          activeNodes: ['p-para', 'p-ai', 'rt-host', 'rt-data'],
+          activeEdges: ['dm-ai', 'dm-data'],
+          description:
+            'Delivers PDF/Office extraction, Hybrid RAG (pgvector + GIN RRF k=60), 7 Agent Profiles, 20+4 audited tools, App Builder 2.0, and MCP/A2A gateways.',
+          route: 'PARA/AI Plugins -> NocoBase 2.2.50 -> pgvector / PG16',
+          chips: ['RRF k=60', '20+4 Tools', 'App Builder 2.0'],
         },
       ],
 );
@@ -913,42 +840,42 @@ const modes = computed<DiagramMode[]>(() =>
   locale.value === 'vi'
     ? [
         {
-          id: 'runtime-mount',
-          label: '7 Plugin & Host Runtime',
-          summary: '7 plugins + NocoBase 2.2.50 + PG16/Valkey',
-          zones: mountZones.value,
-          nodes: mountNodes.value,
-          edges: mountEdges.value,
-          steps: mountSteps.value,
-        },
-        {
-          id: 'sdk-contract',
-          label: 'Hợp đồng sdkProvidedByHost',
-          summary: 'Build Externals & Điều 5.2',
+          id: 'externals-contract',
+          label: 'Host Externals vs Pure-OSI (:ro Mount)',
+          viewBox: '0 0 1220 328',
           zones: contractZones.value,
           nodes: contractNodes.value,
           edges: contractEdges.value,
           steps: contractSteps.value,
+        },
+        {
+          id: 'plugin-domains',
+          label: '7 Plugin & Trách nhiệm Miền',
+          viewBox: '0 0 1160 392',
+          zones: domainZones.value,
+          nodes: domainNodes.value,
+          edges: domainEdges.value,
+          steps: domainSteps.value,
         },
       ]
     : [
         {
-          id: 'runtime-mount',
-          label: '7-Plugin Host Mount',
-          summary: '7 plugins + NocoBase 2.2.50 + PG16/Valkey',
-          zones: mountZones.value,
-          nodes: mountNodes.value,
-          edges: mountEdges.value,
-          steps: mountSteps.value,
-        },
-        {
-          id: 'sdk-contract',
-          label: 'sdkProvidedByHost Contract',
-          summary: 'Build Externals & Clause 5.2',
+          id: 'externals-contract',
+          label: 'Host Externals vs Pure-OSI (:ro Mount)',
+          viewBox: '0 0 1220 328',
           zones: contractZones.value,
           nodes: contractNodes.value,
           edges: contractEdges.value,
           steps: contractSteps.value,
+        },
+        {
+          id: 'plugin-domains',
+          label: '7 Plugins & Domain Responsibilities',
+          viewBox: '0 0 1160 392',
+          zones: domainZones.value,
+          nodes: domainNodes.value,
+          edges: domainEdges.value,
+          steps: domainSteps.value,
         },
       ],
 );
@@ -961,8 +888,8 @@ const titleText = computed(() =>
 
 const captionText = computed(() =>
   locale.value === 'vi'
-    ? 'Toàn bộ 7 plugin @latticedx/* được gắn chỉ đọc vào container ngoài nocobase/nocobase:2.2.50 theo cơ chế sdkProvidedByHost: true.'
-    : 'All seven @latticedx/* plugins mount read-only into external nocobase/nocobase:2.2.50 using sdkProvidedByHost: true.',
+    ? 'Toàn bộ 7 plugin @latticedx/* biên dịch với sdkProvidedByHost: true (loại trừ @nocobase/*, React 18.2, AntD 5.24 và đóng gói thư viện Pure-OSI), gắn chỉ đọc (:ro) vào container ngoài nocobase/nocobase:2.2.50 và giữ nguyên ghi công Powered by NocoBase theo Điều 5.2.'
+    : 'All seven @latticedx/* plugins compile under sdkProvidedByHost: true (stripping @nocobase/*, React 18.2, and AntD 5.24 while bundling Pure-OSI libs), mount read-only (:ro) into external nocobase/nocobase:2.2.50, and preserve Powered by NocoBase attribution under Clause 5.2.',
 );
 </script>
 
@@ -970,7 +897,7 @@ const captionText = computed(() =>
   <DiagramCanvas
     :title="titleText"
     :caption="captionText"
-    view-box="0 0 920 400"
+    view-box="0 0 1220 328"
     :modes="modes"
     :compact="props.compact"
     :lang="locale"

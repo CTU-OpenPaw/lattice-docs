@@ -22,14 +22,14 @@ const resolvedLang = computed<DiagramLocale>(() => {
 
 const title = computed(() =>
   resolvedLang.value === 'vi'
-    ? 'Kiến trúc Zero-Trust Ingress & PostgreSQL 16 FORCE RLS'
-    : 'Zero-Trust Ingress & PostgreSQL 16 FORCE RLS',
+    ? 'Luồng Yêu cầu Đa Tenant & PostgreSQL 16 FORCE RLS'
+    : 'Multi-Tenant Request Pipeline & PostgreSQL 16 FORCE RLS',
 );
 
 const caption = computed(() =>
   resolvedLang.value === 'vi'
-    ? 'Mỗi yêu cầu đi qua Caddy TLS, APISIX JWT/Rate-Limit và Keycloak OIDC/PKCE trước khi cầu nối AsyncLocalStorage gắn app.current_org (hoặc app.rls_bypass) ở phạm vi giao dịch dưới vai trò nocobase_app (NOSUPERUSER NOBYPASSRLS) trên 56 bảng tĩnh và bảng động.'
-    : 'Every request traverses Caddy TLS, APISIX JWT/rate-limit, and Keycloak OIDC/PKCE before the AsyncLocalStorage transaction bridge binds transaction-local app.current_org (or app.rls_bypass) under nocobase_app (NOSUPERUSER NOBYPASSRLS) across 56 static and dynamic tables.',
+    ? 'Mọi yêu cầu người dùng hoặc khóa ldx_pat_* đều qua Caddy, APISIX và middleware NocoBase để gắn app.current_org (is_local=true) trong AsyncLocalStorage và thực thi dưới vai trò nocobase_app (NOSUPERUSER NOBYPASSRLS) trên 56 bảng tĩnh và bảng động latticeCustom*. Chỉ các tác vụ nền nội bộ mới dùng withSystemRlsBypass.'
+    : 'Every user request or ldx_pat_* token traverses Caddy, APISIX, and NocoBase scope middleware to bind transaction-local app.current_org (is_local=true) via AsyncLocalStorage and execute as nocobase_app (NOSUPERUSER NOBYPASSRLS) across 56 static and dynamic latticeCustom* tables. Only internal background workers use withSystemRlsBypass.',
 );
 
 const modes = computed<DiagramMode[]>(() => {
@@ -37,519 +37,487 @@ const modes = computed<DiagramMode[]>(() => {
 
   const tenantMode: DiagramMode = {
     id: 'tenant-rls',
-    label: isVi ? 'Luồng Tenant & FORCE RLS' : 'Tenant Flow & FORCE RLS',
-    summary: isVi
-      ? 'set_config(app.current_org, ..., true) · 56 bảng + động'
-      : 'set_config(app.current_org, ..., true) · 56 static + dynamic',
+    label: isVi ? 'Luồng Tenant & FORCE RLS' : 'Tenant Request & FORCE RLS Pipeline',
+    viewBox: '0 0 1200 336',
     zones: [
       {
         id: 'edge-identity',
-        label: isVi ? 'MẶT PHẲNG BIÊN & ĐỊNH DANH (EDGE + OIDC)' : 'EDGE & IDENTITY PLANE (CADDY / APISIX / KEYCLOAK)',
+        label: isVi ? 'MẶT PHẲNG BIÊN & CỔNG API' : 'EDGE & IDENTITY PLANE',
         x: 16,
         y: 16,
-        width: 928,
-        height: 144,
+        width: 406,
+        height: 156,
         kind: 'admin',
       },
       {
         id: 'host-rls',
-        label: isVi ? 'VÙNG THỰC THI NOCOBASE & CÔ LẬP PG16 FORCE RLS' : 'NOCOBASE HOST & PG16 FORCE RLS ISOLATION ZONE',
-        x: 16,
-        y: 204,
-        width: 928,
-        height: 224,
+        label: isVi ? 'HOST TRANSACTION & CÔ LẬP PG16 FORCE RLS' : 'HOST TRANSACTION & PG16 FORCE RLS ISOLATION',
+        x: 476,
+        y: 16,
+        width: 708,
+        height: 304,
         kind: 'traffic',
       },
     ],
     nodes: [
       {
-        id: 'caddy',
-        title: 'Caddy 2.10',
-        sub: ':443 · TLS + HSTS',
+        id: 'req_in',
+        title: isVi ? 'Yêu cầu Client' : 'Client Request',
+        sub: ['OIDC · Bearer JWT', 'ldx_pat_* API Key'],
         icon: 'globe',
-        x: 36,
-        y: 56,
-        width: 168,
-        height: 64,
+        x: 28,
+        y: 54,
+        width: 160,
+        height: 92,
         zoneId: 'edge-identity',
         inspector: {
-          role: isVi ? 'Biên TLS & Tiêu đề Bảo mật' : 'Edge TLS & Security Header Proxy',
-          packageOrPort: 'caddy:2.10-alpine · :80/:443',
-          protocol: 'HTTPS / HTTP/3 · TLS 1.3',
-          payloadOrSchema: 'HSTS 2y preload · nosniff · -Server',
+          role: isVi ? 'Nguồn Yêu cầu Đầu vào' : 'Inbound Authenticated Request',
+          packageOrPort: 'HTTPS :443 · /p/* · /api/* · /v1/*',
+          protocol: 'OIDC Cookie | Bearer JWT | X-Lattice-API-Key',
+          payloadOrSchema: 'ldx_pat_<8hex>_<32hex> | Session Ticket',
           responsibilities: isVi
-            ? 'Kết thúc TLS cho LATTICE_DOMAIN và KEYCLOAK_DOMAIN, xóa header Server, gắn HSTS/Permissions-Policy và chuyển tiếp /api/* tới APISIX.'
-            : 'Terminates TLS for LATTICE_DOMAIN and KEYCLOAK_DOMAIN, strips Server header, injects HSTS/Permissions-Policy, and proxies /api/* to APISIX.',
+            ? 'Tiếp nhận phiên OIDC, JWT hoặc khóa API theo tenant ldx_pat_* (luôn gắn app.current_org, không bao giờ bật rls_bypass).'
+            : 'Carries an OIDC session, Bearer JWT, or tenant-scoped ldx_pat_* token (always bound to app.current_org, never rls_bypass).',
         },
       },
       {
-        id: 'apisix',
-        title: 'APISIX 3.19',
-        sub: ':9080 · JWKS/Limit',
+        id: 'edge_gw',
+        title: 'Caddy 2.10 + APISIX 3.19',
+        sub: ['TLS 1.3 · JWKS', 'Valkey Rate Limit'],
         icon: 'shield',
-        x: 264,
-        y: 56,
+        x: 242,
+        y: 54,
         width: 168,
-        height: 64,
+        height: 92,
         zoneId: 'edge-identity',
         inspector: {
-          role: isVi ? 'Cổng API Zero-Trust' : 'Zero-Trust API Gateway',
-          packageOrPort: 'apache/apisix:3.19.0 · :9080',
-          protocol: 'HTTP · OIDC JWKS + Redis Limit',
+          role: isVi ? 'Biên TLS & Cổng API Zero-Trust' : 'Edge TLS & Zero-Trust API Gateway',
+          packageOrPort: 'caddy:2.10-alpine (:443) · apisix:3.19.0 (:9080)',
+          protocol: 'TLS 1.3 · HSTS · OIDC JWKS · Valkey limit-count',
           payloadOrSchema: 'X-Request-Id · 120/240/300 req/60s',
           responsibilities: isVi
-            ? 'Gắn X-Request-Id, kiểm soát CORS nghiêm ngặt theo LATTICE_ALLOWED_ORIGIN, giới hạn tốc độ bằng Valkey và xác thực JWKS trên tuyến OIDC.'
-            : 'Attaches X-Request-Id, enforces strict CORS via LATTICE_ALLOWED_ORIGIN, applies Valkey-backed rate limits, and validates JWKS on OIDC routes.',
+            ? 'Chấm dứt TLS, xóa header Server, kiểm tra CORS/JWKS, gắn X-Request-Id và giới hạn lưu lượng theo IP qua Valkey.'
+            : 'Terminates TLS 1.3, strips Server headers, validates CORS/JWKS, injects X-Request-Id, and enforces Valkey rate limits.',
         },
       },
       {
-        id: 'keycloak',
-        title: 'Keycloak 26.8',
-        sub: 'OIDC · PKCE S256',
+        id: 'nb_auth',
+        title: isVi ? 'NocoBase Auth & Scope' : 'NocoBase Auth & Scope',
+        sub: ['PKCE · Valkey DB 2', 'Resolve tenant orgId'],
         icon: 'key',
-        x: 492,
-        y: 56,
-        width: 168,
-        height: 64,
-        zoneId: 'edge-identity',
-        inspector: {
-          role: isVi ? 'Nhà cung cấp Định danh OIDC' : 'Enterprise OIDC Identity Provider',
-          packageOrPort: 'quay.io/keycloak/keycloak:26.8.2',
-          protocol: 'OIDC · Authorization Code + PKCE S256',
-          payloadOrSchema: 'realm: lattice · dx-native / dx-gateway',
-          responsibilities: isVi
-            ? 'Xác thực người dùng với khóa brute-force (5 lần sai), TOTP OTP và mật khẩu tối thiểu 12 ký tự; cấp JWT và sự kiện backchannelLogout.'
-            : 'Authenticates users with brute-force lockout (5 failures), TOTP MFA, and 12-char password policy; issues JWTs and backchannelLogout events.',
-        },
-      },
-      {
-        id: 'valkey2',
-        title: 'Valkey 8.1 DB2',
-        sub: 'DB2 · state/ticket',
-        icon: 'lock',
-        x: 716,
-        y: 56,
-        width: 168,
-        height: 64,
-        zoneId: 'edge-identity',
-        inspector: {
-          role: isVi ? 'Kho Phiên & Thu hồi OIDC' : 'OIDC State & Revocation Store',
-          packageOrPort: 'valkey/valkey:8.1-alpine · :6379/2',
-          protocol: 'RESP · DX_NATIVE_AUTH_SESSION_REDIS_URL',
-          payloadOrSchema: 'state: 300s · ticket: 60s · revoked: 24h',
-          responsibilities: isVi
-            ? 'Lưu PKCE code_verifier (300s), ticket đổi phiên một lần (60s) và danh sách revoked/revoked_sid (24h) cho createRevocationGuard.'
-            : 'Stores PKCE state (300s TTL), one-time session exchange tickets (60s TTL), and revoked/revoked_sid entries (24h TTL) for createRevocationGuard.',
-        },
-      },
-      {
-        id: 'nocobase',
-        title: 'NocoBase Host',
-        sub: 'v2.2.50 · 7 Plugins',
-        icon: 'layers',
-        x: 256,
-        y: 232,
-        width: 184,
-        height: 64,
+        x: 488,
+        y: 54,
+        width: 172,
+        height: 92,
         zoneId: 'host-rls',
         inspector: {
-          role: isVi ? 'Máy chủ Ứng dụng & Enterprise Auth' : 'Host Runtime & Enterprise Auth',
-          packageOrPort: 'nocobase/nocobase:2.2.50 · :80',
-          protocol: 'HTTP · enterpriseAuth + native-scope',
-          payloadOrSchema: 'DX_PG_RLS_SESSION=true · orgId scope',
+          role: isVi ? 'Middleware Xác thực & Phạm vi Tenant' : 'Host Auth & Tenant Scope Middleware',
+          packageOrPort: 'plugin-enterprise-auth · native-scope.js · paas-api-keys.js',
+          protocol: 'HTTP · PKCE S256 · SHA-256 timingSafeEqualHex',
+          payloadOrSchema: 'DX_PG_RLS_SESSION=true · validated orgId',
           responsibilities: isVi
-            ? 'Đổi ticket OIDC thành phiên, chặn leo thang vai trò ldx_admin/allowConfigure/pm* trong ánh xạ nhóm và khóa phân trang/filter bất hợp lệ.'
-            : 'Exchanges OIDC tickets for sessions, blocks ldx_admin/allowConfigure/pm* group-role escalation, and guards query pagination and filters.',
+            ? 'Xác thực OIDC hoặc ldx_pat_*, kiểm tra thu hồi phiên trên Valkey DB 2, chặn leo thang vai trò và trích xuất orgId hợp lệ.'
+            : 'Verifies OIDC tickets or ldx_pat_* keys against Valkey DB 2 revocations, clamps role escalation, and resolves validated orgId.',
         },
       },
       {
-        id: 'als_bridge',
-        title: 'ALS Tx Bridge',
-        sub: 'set_config(...,true)',
-        icon: 'git-branch',
-        x: 520,
-        y: 232,
+        id: 'idp_valkey',
+        title: 'Keycloak 26.8 + Valkey DB 2',
+        sub: ['PKCE S256 (300s / 60s)', 'Revocation Guard (24h)'],
+        icon: 'lock',
+        x: 478,
+        y: 214,
         width: 192,
-        height: 64,
+        height: 86,
+        zoneId: 'host-rls',
+        inspector: {
+          role: isVi ? 'Nhà cung cấp OIDC & Kho Thu hồi Phiên' : 'OIDC Identity Provider & Session Revocation Store',
+          packageOrPort: 'keycloak:26.8.2 · valkey:8.1-alpine (:6379/2)',
+          protocol: 'OIDC PKCE S256 · RESP DB 2',
+          payloadOrSchema: 'state: 300s · ticket: 60s · revoked/revoked_sid: 24h',
+          responsibilities: isVi
+            ? 'Cấp mã OIDC PKCE S256 với khóa brute-force, đồng thời lưu state, ticket dùng một lần và danh sách thu hồi trong Valkey DB 2.'
+            : 'Executes PKCE S256 login with brute-force lockout while storing state, single-use exchange tickets, and 24h revocations in Valkey DB 2.',
+        },
+      },
+      {
+        id: 'als_tx',
+        title: 'AsyncLocalStorage Tx',
+        sub: ['withTenantRlsContext', 'SET LOCAL', 'app.current_org'],
+        icon: 'git-branch',
+        x: 714,
+        y: 54,
+        width: 176,
+        height: 92,
         zoneId: 'host-rls',
         inspector: {
           role: isVi ? 'Cầu nối Giao dịch AsyncLocalStorage' : 'AsyncLocalStorage Transaction Bridge',
           packageOrPort: '@latticedx/plugin-lattice-foundation · pg-rls.js',
-          protocol: 'Sequelize Tx · AsyncLocalStorage',
-          payloadOrSchema: "set_config('app.current_org', :orgId, true)",
+          protocol: 'Sequelize Transaction · AsyncLocalStorage',
+          payloadOrSchema: "SELECT set_config('app.current_org', :orgId, true)",
           responsibilities: isVi
-            ? 'Bọc Repository.prototype.*, sequelize.query và db.getRepository(); dùng is_local=true để PostgreSQL tự xóa GUC khi kết thúc giao dịch.'
-            : 'Wraps Repository.prototype.*, sequelize.query, and db.getRepository(); uses is_local=true so PostgreSQL resets GUC on commit or rollback.',
-        },
-      },
-      {
-        id: 'nocobase_app',
-        title: 'nocobase_app',
-        sub: 'NOBYPASSRLS Role',
-        icon: 'terminal',
-        x: 520,
-        y: 344,
-        width: 192,
-        height: 64,
-        zoneId: 'host-rls',
-        inspector: {
-          role: isVi ? 'Vai trò Runtime Không Đặc quyền' : 'Least-Privilege Runtime DB Role',
-          packageOrPort: 'init-nocobase-db.sh · NOCOBASE_APP_DB_USER',
-          protocol: 'PostgreSQL Wire · TLS / SCRAM-SHA-256',
-          payloadOrSchema: 'NOSUPERUSER NOCREATEDB NOINHERIT NOBYPASSRLS',
-          responsibilities: isVi
-            ? 'Tách biệt với superuser khởi tạo (nocobase/postgres); ngay cả khi sở hữu schema public, NOBYPASSRLS buộc mọi truy vấn phải qua chính sách RLS.'
-            : 'Separated from bootstrap superuser (nocobase/postgres); even as public schema owner, NOBYPASSRLS forces every query through RLS policies.',
+            ? 'Mở giao dịch qua withTenantRlsContext, truyền ngữ cảnh qua AsyncLocalStorage tới mọi truy vấn ORM/SQL và dùng is_local=true để tự xóa khi COMMIT/ROLLBACK.'
+            : 'Opens a Sequelize transaction via withTenantRlsContext, propagates it via AsyncLocalStorage to nested queries, and uses is_local=true so pool connections never leak GUCs.',
         },
       },
       {
         id: 'pg16_rls',
-        title: 'PG16 FORCE RLS',
-        sub: '56 Static + Custom',
+        title: 'PostgreSQL 16 FORCE RLS',
+        sub: ['Role: nocobase_app', 'NOBYPASSRLS', '56 + Custom Tables'],
         icon: 'database',
-        x: 244,
-        y: 344,
-        width: 208,
-        height: 64,
+        x: 982,
+        y: 54,
+        width: 190,
+        height: 92,
         zoneId: 'host-rls',
         focal: true,
         inspector: {
-          role: isVi ? 'Thực thi Cô lập Đa Tổ chức' : 'Multi-Tenant Row Isolation Engine',
-          packageOrPort: 'pgvector/pgvector:0.8.1-pg16 · :5432',
-          protocol: 'SQL · ENABLE + FORCE ROW LEVEL SECURITY',
-          payloadOrSchema: 'lattice_tenant_isolation · organizationId / organization_id',
+          role: isVi ? 'Công cụ Cô lập Hàng PG16 (Role nocobase_app)' : 'PG16 Row Isolation Engine (Role nocobase_app)',
+          packageOrPort: 'pgvector/pgvector:0.8.1-pg16 (:5432) · NOCOBASE_APP_DB_USER=nocobase_app',
+          protocol: 'ENABLE + FORCE ROW LEVEL SECURITY · NOSUPERUSER NOBYPASSRLS',
+          payloadOrSchema: 'Policy lattice_tenant_isolation (USING & WITH CHECK · 56 static + latticeCustom*)',
           responsibilities: isVi
-            ? 'Áp dụng FORCE RLS trên 54 bảng camelCase, 2 bảng đính kèm snake_case và mọi bảng động latticeCustom*; từ chối truy cập nếu thiếu app.current_org.'
-            : 'Enforces FORCE RLS on 54 camelCase tables, 2 snake_case attachment tables, and dynamic latticeCustom* tables; fails closed without app.current_org.',
+            ? 'Kết nối bằng role nocobase_app (NOSUPERUSER NOBYPASSRLS); buộc mọi SELECT/INSERT/UPDATE/DELETE trên 54 bảng camelCase, 2 bảng snake_case và bảng động latticeCustom* khớp app.current_org.'
+            : 'Connects as nocobase_app (NOSUPERUSER NOBYPASSRLS); enforces lattice_tenant_isolation USING & WITH CHECK across 54 camelCase tables, 2 snake_case attachment tables, and dynamic latticeCustom* tables.',
         },
       },
     ],
     edges: [
-      { id: 'e1', from: 'caddy', to: 'apisix', label: 'HTTPS', kind: 'primary' },
-      { id: 'e2', from: 'apisix', to: 'keycloak', label: 'JWKS', kind: 'flow' },
-      { id: 'e3', from: 'keycloak', to: 'valkey2', label: 'PKCE', kind: 'flow' },
-      { id: 'e4', from: 'apisix', to: 'nocobase', label: 'X-Req-Id', kind: 'primary' },
       {
-        id: 'e5',
-        from: 'nocobase',
-        to: 'valkey2',
-        label: 'DB 2 Auth',
-        kind: 'flow',
+        id: 'e1',
+        from: 'req_in',
+        to: 'edge_gw',
+        label: 'HTTPS',
+        kind: 'primary',
         points: [
-          [404, 232],
-          [404, 180],
-          [800, 180],
-          [800, 120],
+          [188, 100],
+          [242, 100],
         ],
       },
-      { id: 'e6', from: 'nocobase', to: 'als_bridge', label: 'Tx Scope', kind: 'primary' },
-      { id: 'e7', from: 'als_bridge', to: 'nocobase_app', label: 'set_config', kind: 'primary' },
-      { id: 'e8', from: 'nocobase_app', to: 'pg16_rls', label: 'RLS', kind: 'primary' },
+      {
+        id: 'e2',
+        from: 'edge_gw',
+        to: 'nb_auth',
+        label: 'X-Req-Id',
+        kind: 'primary',
+        points: [
+          [410, 100],
+          [488, 100],
+        ],
+      },
+      {
+        id: 'e3',
+        from: 'nb_auth',
+        to: 'idp_valkey',
+        label: 'PKCE / Revoked',
+        kind: 'flow',
+        points: [
+          [574, 146],
+          [574, 214],
+        ],
+      },
+      {
+        id: 'e4',
+        from: 'nb_auth',
+        to: 'als_tx',
+        label: 'orgId',
+        kind: 'primary',
+        points: [
+          [660, 100],
+          [714, 100],
+        ],
+      },
+      {
+        id: 'e5',
+        from: 'als_tx',
+        to: 'pg16_rls',
+        label: 'BEGIN + GUC',
+        kind: 'primary',
+        points: [
+          [890, 100],
+          [982, 100],
+        ],
+      },
     ],
     steps: [
       {
         id: 'step-edge',
-        title: isVi ? 'Biên TLS & Kiểm soát APISIX' : 'Edge TLS & APISIX Guard',
-        activeNodes: ['caddy', 'apisix'],
+        title: isVi ? 'Biên TLS & APISIX' : 'Edge TLS & APISIX',
+        activeNodes: ['req_in', 'edge_gw'],
         activeEdges: ['e1'],
         description: isVi
-          ? 'Caddy kết thúc TLS 1.3 và gắn tiêu đề bảo mật; APISIX gắn X-Request-Id, kiểm tra CORS và đếm giới hạn tốc độ trên Valkey.'
-          : 'Caddy terminates TLS 1.3 with strict security headers; APISIX injects X-Request-Id, validates CORS, and enforces Valkey rate limits.',
-        route: 'HTTPS https://${LATTICE_DOMAIN}/api/*',
+          ? 'Caddy chấm dứt TLS 1.3 với HSTS; APISIX gắn X-Request-Id, kiểm tra CORS/JWKS và áp đặt giới hạn lưu lượng qua Valkey.'
+          : 'Caddy terminates TLS 1.3 with strict HSTS; APISIX injects X-Request-Id, checks CORS/JWKS, and enforces Valkey rate limits.',
+        route: 'HTTPS -> Caddy 2.10 -> APISIX 3.19',
         payload: 'X-Request-Id + limit-count (120/240/300 req/60s)',
         chips: ['TLS 1.3', 'Zero-Trust Edge'],
       },
       {
         id: 'step-oidc',
-        title: isVi ? 'Xác thực OIDC PKCE & Valkey DB 2' : 'OIDC PKCE & Valkey DB 2',
-        activeNodes: ['apisix', 'keycloak', 'valkey2', 'nocobase'],
-        activeEdges: ['e2', 'e3', 'e4', 'e5'],
+        title: isVi ? 'OIDC / PAT Scope & Valkey DB 2' : 'OIDC / PAT Scope & Valkey DB 2',
+        activeNodes: ['edge_gw', 'nb_auth', 'idp_valkey'],
+        activeEdges: ['e2', 'e3'],
         description: isVi
-          ? 'Keycloak xác thực PKCE S256 cho client dx-native; plugin-enterprise-auth lưu state (300s), ticket (60s) và trạng thái thu hồi (24h) trong Valkey DB 2.'
-          : 'Keycloak executes PKCE S256 for dx-native; plugin-enterprise-auth tracks state (300s), single-use ticket (60s), and revocations (24h) in Valkey DB 2.',
-        route: 'GET /api/enterpriseAuth:start -> :callback -> POST :finish',
-        payload: 'code_challenge_method=S256 · HttpOnly ldx_enterprise_binding',
-        chips: ['PKCE S256', 'Valkey DB 2'],
+          ? 'NocoBase Auth & Scope đối chiếu OIDC PKCE (Keycloak + Valkey DB 2) hoặc băm SHA-256 khóa ldx_pat_* để xác định tenant orgId.'
+          : 'NocoBase Auth & Scope resolves tenant orgId via Keycloak PKCE (backed by Valkey DB 2) or SHA-256 verification of ldx_pat_* tokens.',
+        route: 'enterpriseAuth:callback | paas-api-keys.js -> orgId',
+        payload: 'state: 300s · ticket: 60s · revoked: 24h',
+        chips: ['PKCE S256', 'Valkey DB 2', 'ldx_pat_* -> orgId'],
       },
       {
         id: 'step-als',
-        title: isVi ? 'Gắn app.current_org theo Giao dịch' : 'Transaction-Local GUC Binding',
-        activeNodes: ['nocobase', 'als_bridge'],
-        activeEdges: ['e6'],
+        title: 'withTenantRlsContext (is_local=true)',
+        activeNodes: ['nb_auth', 'als_tx'],
+        activeEdges: ['e4'],
         description: isVi
-          ? 'withTenantRlsContext mở giao dịch Sequelize và truyền qua AsyncLocalStorage tới mọi truy vấn con, tránh rò rỉ GUC sang kết nối pool khác.'
-          : 'withTenantRlsContext opens a Sequelize transaction and propagates it via AsyncLocalStorage to nested repository queries, preventing pool leakage.',
-        route: 'withTenantRlsContext(orgId, fn)',
+          ? 'withTenantRlsContext mở giao dịch Sequelize, gắn set_config(\'app.current_org\', :orgId, true) và lan truyền qua AsyncLocalStorage.'
+          : 'withTenantRlsContext opens a Sequelize transaction, runs set_config(\'app.current_org\', :orgId, true), and propagates it via AsyncLocalStorage.',
+        route: 'withTenantRlsContext(db, orgId, fn)',
         payload: "SELECT set_config('app.current_org', :orgId, true);",
         chips: ['AsyncLocalStorage', 'is_local=true'],
       },
       {
-        id: 'step-role',
-        title: isVi ? 'Thực thi dưới Role nocobase_app' : 'Execution under nocobase_app',
-        activeNodes: ['als_bridge', 'nocobase_app'],
-        activeEdges: ['e7'],
-        description: isVi
-          ? 'Kết nối ứng dụng chạy dưới vai trò nocobase_app (NOSUPERUSER NOBYPASSRLS), đảm bảo không thể bỏ qua FORCE ROW LEVEL SECURITY.'
-          : 'Application queries execute as nocobase_app (NOSUPERUSER NOBYPASSRLS), ensuring FORCE ROW LEVEL SECURITY cannot be bypassed.',
-        route: 'NOCOBASE_APP_DB_USER=nocobase_app',
-        payload: 'NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS',
-        chips: ['NOBYPASSRLS', 'Least Privilege'],
-      },
-      {
         id: 'step-rls',
-        title: isVi ? 'Chính sách FORCE RLS trên 56+ Bảng' : 'FORCE RLS across 56+ Tables',
-        activeNodes: ['nocobase_app', 'pg16_rls'],
-        activeEdges: ['e8'],
+        title: isVi ? 'nocobase_app & lattice_tenant_isolation' : 'nocobase_app & FORCE RLS Policy',
+        activeNodes: ['als_tx', 'pg16_rls'],
+        activeEdges: ['e5'],
         description: isVi
-          ? 'PostgreSQL 16 đối chiếu organizationId (54 bảng) và organization_id (2 bảng đính kèm) cùng các bảng động latticeCustom* theo lattice_tenant_isolation.'
-          : 'PostgreSQL 16 evaluates organizationId (54 tables), organization_id (2 attachment tables), and dynamic latticeCustom* tables against lattice_tenant_isolation.',
+          ? 'Truy vấn thực thi dưới vai trò nocobase_app (NOSUPERUSER NOBYPASSRLS); PostgreSQL 16 kiểm tra USING và WITH CHECK trên 56 bảng tĩnh + latticeCustom*.'
+          : 'Queries execute under nocobase_app (NOSUPERUSER NOBYPASSRLS); PostgreSQL 16 evaluates USING and WITH CHECK across 56 static + dynamic latticeCustom* tables.',
         route: 'POLICY lattice_tenant_isolation ON public."<table>"',
         payload: '"organizationId" = nullif(current_setting(\'app.current_org\', true), \'\')',
-        chips: ['56 Static Tables', 'Dynamic latticeCustom*'],
+        chips: ['NOBYPASSRLS', '56 Static + Custom'],
       },
     ],
   };
 
-  const bypassMode: DiagramMode = {
-    id: 'bypass-keys',
-    label: isVi ? 'API Key ldx_pat_* & System Bypass' : 'ldx_pat_* Keys & System Bypass',
-    summary: isVi
-      ? 'PAT -> app.current_org (Tenant) vs System Worker -> app.rls_bypass=on (Tx nội bộ)'
-      : 'PAT -> app.current_org (Tenant) vs System Worker -> app.rls_bypass=on (Internal Tx)',
+  const workerMode: DiagramMode = {
+    id: 'workers-savepoint',
+    label: isVi ? 'Worker Nội bộ & Savepoint Guard' : 'Internal Workers & Savepoint Guard',
+    viewBox: '0 0 1080 300',
     zones: [
       {
-        id: 'caller-zone',
-        label: isVi ? 'XÁC THỰC API KEY (TENANT) VS TÁC VỤ HỆ THỐNG (INTERNAL TX)' : 'API KEY (TENANT-SCOPED) VS SYSTEM WORKER (INTERNAL TX ONLY)',
+        id: 'worker-bypass-zone',
+        label: isVi
+          ? 'BYPASS PHẠM VI HỆ THỐNG — CHỈ DÀNH CHO WORKER NỀN NỘI BỘ (KHÔNG BAO GIỜ CHO LDX_PAT_*)'
+          : 'SCOPED SYSTEM WORKER BYPASS — INTERNAL BACKGROUND TX ONLY (NEVER USER / PAT REQUESTS)',
         x: 16,
-        y: 16,
-        width: 928,
-        height: 144,
+        y: 14,
+        width: 1048,
+        height: 124,
         kind: 'admin',
       },
       {
         id: 'savepoint-zone',
-        label: isVi ? 'ALS TX & SAVEPOINT GUARD (RUNINRLSSAVEPOINT)' : 'ALS TX & SAVEPOINT GUARD (RUNINRLSSAVEPOINT)',
+        label: isVi
+          ? 'CÔ LẬP LỖI SAVEPOINT — NGĂN NHIỄM ĐỘC GIAO DỊCH 25P02'
+          : 'SAVEPOINT ERROR ISOLATION — PREVENTS 25P02 TX POISONING',
         x: 16,
-        y: 204,
-        width: 928,
-        height: 224,
+        y: 158,
+        width: 1048,
+        height: 124,
         kind: 'traffic',
       },
     ],
     nodes: [
       {
-        id: 'client_pat',
-        title: 'API Client',
-        sub: 'X-Lattice-API-Key',
-        icon: 'terminal',
-        x: 28,
-        y: 56,
-        width: 160,
-        height: 64,
-        zoneId: 'caller-zone',
-        inspector: {
-          role: isVi ? 'Máy khách Tích hợp Bên ngoài' : 'External Integration Client',
-          packageOrPort: 'HTTPS · X-Lattice-API-Key | Bearer',
-          protocol: 'REST / OpenAPI 3.1 / MCP',
-          payloadOrSchema: 'ldx_pat_<8hex>_<32hex>',
-          responsibilities: isVi
-            ? 'Gửi khóa cá nhân ldx_pat_* được cấp một lần khi tạo; hỗ trợ 7 phạm vi read, write, wms, dmn, iot, ai và ledger.'
-            : 'Presents scoped ldx_pat_* tokens returned once at creation; supports 7 scopes: read, write, wms, dmn, iot, ai, and ledger.',
-        },
-      },
-      {
-        id: 'apisix_gw',
-        title: 'APISIX 3.19',
-        sub: ':9080 · Limit-Count',
-        icon: 'shield',
-        x: 260,
-        y: 56,
-        width: 172,
-        height: 64,
-        zoneId: 'caller-zone',
-        inspector: {
-          role: isVi ? 'Cổng Giới hạn & Định tuyến' : 'Rate-Limiting Gateway',
-          packageOrPort: 'apache/apisix:3.19.0 · :9080',
-          protocol: 'HTTP · limit-count (Valkey)',
-          payloadOrSchema: 'X-Request-Id · per-IP window',
-          responsibilities: isVi
-            ? 'Áp đặt ngưỡng lưu lượng theo IP và chuyển tiếp header xác thực sang middleware NocoBase.'
-            : 'Applies per-IP rate limiting and forwards authentication headers upstream to NocoBase middleware.',
-        },
-      },
-      {
-        id: 'pat_guard',
-        title: 'PAT Verifier',
-        sub: 'app.current_org',
-        icon: 'key',
-        x: 500,
-        y: 56,
-        width: 180,
-        height: 64,
-        zoneId: 'caller-zone',
-        inspector: {
-          role: isVi ? 'Xác thực Khóa PaaS Phạm vi Tenant (Không Bypass)' : 'Tenant-Scoped PaaS Key Verifier (No Bypass)',
-          packageOrPort: 'paas-api-keys.js · latticeApiKeys',
-          protocol: 'SHA-256 · timingSafeEqualHex',
-          payloadOrSchema: "set_config('app.current_org', key.organizationId, true)",
-          responsibilities: isVi
-            ? 'Đối chiếu keyHash bằng timingSafeEqualHex, gắn app.current_org đúng tổ chức sở hữu khóa và dùng clampHeaderRole ngăn leo thang vai trò.'
-            : 'Verifies SHA-256 keyHash via timingSafeEqualHex, binds tenant-scoped app.current_org (never rls_bypass), and clamps role escalation.',
-        },
-      },
-      {
-        id: 'system_worker',
-        title: 'System Worker',
-        sub: 'app.rls_bypass=on',
+        id: 'sys_worker',
+        title: isVi ? 'Worker Nội bộ' : 'Internal Worker',
+        sub: ['Outbox · SLA · Bootstrap', isVi ? 'Không dùng cho ldx_pat_*' : 'Never user / ldx_pat_*'],
         icon: 'workflow',
-        x: 744,
-        y: 56,
-        width: 184,
-        height: 64,
-        zoneId: 'caller-zone',
+        x: 32,
+        y: 50,
+        width: 272,
+        height: 72,
+        zoneId: 'worker-bypass-zone',
         inspector: {
-          role: isVi ? 'Tác vụ Hệ thống Nội bộ (Chỉ trong Giao dịch nội bộ)' : 'Cross-Tenant System Worker (Internal Tx Only)',
-          packageOrPort: 'pg-rls.js · withSystemRlsBypass',
+          role: isVi ? 'Tác vụ Nền Hệ thống Nội bộ' : 'Internal System Background Worker',
+          packageOrPort: 'event-bus.js · sla-monitor · bootstrap',
           protocol: 'Internal Scheduler (10s / 60s)',
-          payloadOrSchema: "set_config('app.rls_bypass', 'on', true)",
+          payloadOrSchema: 'Outbox drain · Pre-tenant lookup · Seeding',
           responsibilities: isVi
-            ? 'Chỉ dùng cho tác vụ nền nội bộ (outbox, SLA, boot) trong giao dịch ngắn; lưu và khôi phục current_setting(app.rls_bypass, true) ngay sau khi xong.'
-            : 'Restricted strictly to internal background drainers (outbox, SLA, bootstrap) inside short transactions with automatic GUC restore.',
+            ? 'Chỉ dùng cho các drainer nội bộ (outbox, SLA, bootstrap). Mọi khóa API ldx_pat_* của người dùng/đối tác đều bị ràng buộc vào tenant app.current_org.'
+            : 'Restricted solely to internal system tasks (outbox drain, SLA check, seeding). Tenant ldx_pat_* API keys always use withTenantRlsContext, never rls_bypass.',
         },
       },
       {
-        id: 'als_bypass',
-        title: 'ALS Tx & Savepoint Guard',
-        sub: 'runInRlsSavepoint · GUC',
-        icon: 'git-branch',
-        x: 492,
-        y: 232,
-        width: 256,
-        height: 64,
-        zoneId: 'savepoint-zone',
+        id: 'sys_tx',
+        title: 'withSystemRlsBypass',
+        sub: ["SET LOCAL app.rls_bypass = 'on'", isVi ? 'Tự lưu & khôi phục GUC cũ' : 'Saves & restores prior GUC'],
+        icon: 'shield',
+        x: 404,
+        y: 50,
+        width: 272,
+        height: 72,
+        zoneId: 'worker-bypass-zone',
         inspector: {
-          role: isVi ? 'Bộ điều phối Giao dịch AsyncLocalStorage & Savepoint' : 'AsyncLocalStorage Tx & Savepoint Guard',
-          packageOrPort: 'pg-rls.js · runInRlsSavepoint',
-          protocol: 'SQL SAVEPOINT + AsyncLocalStorage',
-          payloadOrSchema: 'SAVEPOINT "ldx_sp_<n>" · app.current_org | app.rls_bypass',
+          role: isVi ? 'Bao bọc Giao dịch Bypass Có Kiểm soát' : 'Controlled System Bypass Transaction Wrapper',
+          packageOrPort: 'pg-rls.js · withSystemRlsBypass(db, fn)',
+          protocol: 'AsyncLocalStorage · Transaction-Local GUC',
+          payloadOrSchema: "SELECT set_config('app.rls_bypass', 'on', true)",
           responsibilities: isVi
-            ? 'Truyền ngữ cảnh app.current_org (PAT/User) hoặc app.rls_bypass=on (System Worker) trong AsyncLocalStorage và bọc truy vấn tùy chọn bằng SAVEPOINT ldx_sp_<n> để tránh lỗi 25P02.'
-            : 'Propagates tenant-scoped app.current_org or internal-only app.rls_bypass=on in AsyncLocalStorage and isolates optional queries with SAVEPOINT ldx_sp_<n>.',
+            ? 'Đọc current_setting(\'app.rls_bypass\', true) trước đó, bật \'on\' cục bộ trong giao dịch ngắn và khôi phục trong khối finally.'
+            : 'Reads prior app.rls_bypass state, sets transaction-local \'on\' for a short scoped callback, and restores the prior GUC in a finally block.',
         },
       },
       {
-        id: 'nocobase_role',
-        title: 'nocobase_app',
-        sub: 'NOBYPASSRLS Role',
-        icon: 'terminal',
-        x: 492,
-        y: 344,
-        width: 256,
-        height: 64,
-        zoneId: 'savepoint-zone',
-        inspector: {
-          role: isVi ? 'Vai trò Thực thi Cơ sở dữ liệu' : 'Runtime Database Role',
-          packageOrPort: 'init-nocobase-db.sh · NOCOBASE_APP_DB_USER',
-          protocol: 'PostgreSQL Wire · Non-Superuser',
-          payloadOrSchema: 'NOSUPERUSER NOBYPASSRLS',
-          responsibilities: isVi
-            ? 'Tài khoản không đặc quyền; mọi truy vấn PAT chỉ thấy đúng tenant app.current_org, chỉ mở phạm vi liên tổ chức khi System Worker bật app.rls_bypass=on.'
-            : 'Non-superuser role: PAT queries remain strictly scoped to app.current_org unless an internal System Worker sets transaction-local app.rls_bypass=on.',
-        },
-      },
-      {
-        id: 'pg16_policies',
-        title: 'PG16 FORCE RLS',
-        sub: '56 Static + Custom',
+        id: 'pg_sys',
+        title: isVi ? 'Giao dịch Ngắn PG16' : 'PG16 Short Transaction',
+        sub: ['nocobase_app (NOBYPASSRLS)', isVi ? 'Tự đặt lại khi Commit/Rollback' : 'Auto-reset on Commit / Rollback'],
         icon: 'database',
-        x: 164,
-        y: 344,
-        width: 236,
-        height: 64,
+        x: 776,
+        y: 50,
+        width: 272,
+        height: 72,
+        zoneId: 'worker-bypass-zone',
+        focal: true,
+        inspector: {
+          role: isVi ? 'Thực thi Ngắn Hạn trên PostgreSQL 16' : 'PostgreSQL 16 Short-Lived Scoped Execution',
+          packageOrPort: 'pgvector:0.8.1-pg16 · nocobase_app',
+          protocol: 'BEGIN ... COMMIT / ROLLBACK (is_local=true)',
+          payloadOrSchema: "current_setting('app.rls_bypass', true) = 'on'",
+          responsibilities: isVi
+            ? 'Cho phép tác vụ hệ thống đọc/ghi liên tổ chức trong giao dịch ngắn và tự động xóa GUC khi giao dịch kết thúc.'
+            : 'Permits bounded cross-tenant system queries inside the short transaction and guarantees PostgreSQL resets the GUC at transaction end.',
+        },
+      },
+      {
+        id: 'opt_query',
+        title: isVi ? 'Truy vấn Tùy chọn trong Tx' : 'Optional Query in Tx',
+        sub: [isVi ? 'Bên trong giao dịch RLS hiện hành' : 'Inside active RLS transaction', isVi ? 'Cô lập lỗi SQL tùy chọn' : 'Guards against SQL error'],
+        icon: 'terminal',
+        x: 32,
+        y: 194,
+        width: 272,
+        height: 72,
+        zoneId: 'savepoint-zone',
+        inspector: {
+          role: isVi ? 'Truy vấn Phụ Tùy chọn Trong Giao dịch' : 'Optional Fallback Query Inside Active Tx',
+          packageOrPort: 'pg-rls.js · ORM / Metadata Probe',
+          protocol: 'Sequelize Transaction Context',
+          payloadOrSchema: 'Optional lookup that may raise SQL error',
+          responsibilities: isVi
+            ? 'Khi một truy vấn tùy chọn (vd kiểm tra bảng hoặc fallback) gặp lỗi trong PostgreSQL, giao dịch ngoài sẽ rơi vào trạng thái 25P02 nếu không có SAVEPOINT.'
+            : 'Without a SAVEPOINT, any SQL error in an optional probe aborts the entire outer PostgreSQL transaction with SQLSTATE 25P02.',
+        },
+      },
+      {
+        id: 'sp_guard',
+        title: 'runInRlsSavepoint',
+        sub: ['SAVEPOINT "ldx_sp_<n>"', isVi ? 'Cô lập lỗi từng câu lệnh' : 'Isolates statement failure'],
+        icon: 'git-branch',
+        x: 404,
+        y: 194,
+        width: 272,
+        height: 72,
         zoneId: 'savepoint-zone',
         focal: true,
         inspector: {
-          role: isVi ? 'Chính sách Cô lập Bảng Dữ liệu' : 'Table Isolation Policy Engine',
-          packageOrPort: 'pgvector/pgvector:0.8.1-pg16 · :5432',
-          protocol: 'SQL · lattice_tenant_isolation',
-          payloadOrSchema: "app.current_org OR (internal app.rls_bypass = 'on')",
+          role: isVi ? 'Bộ bảo vệ Savepoint Chống Lỗi 25P02' : '25P02 Transaction Poisoning Guard',
+          packageOrPort: 'pg-rls.js · runInRlsSavepoint(db, fn)',
+          protocol: 'PostgreSQL SAVEPOINT / RELEASE / ROLLBACK TO',
+          payloadOrSchema: 'SAVEPOINT "ldx_sp_<counter>"',
           responsibilities: isVi
-            ? 'Kiểm tra khớp organizationId / organization_id theo app.current_org, hoặc nhánh app.rls_bypass=on cho tác vụ hệ thống nội bộ; mọi ghi đều qua WITH CHECK.'
-            : 'Matches organizationId / organization_id against app.current_org, or permits internal app.rls_bypass=on; writes enforce the identical WITH CHECK rule.',
+            ? 'Tạo điểm lưu tuần tự ldx_sp_<n> quanh truy vấn tùy chọn để lỗi cục bộ không làm hỏng toàn bộ giao dịch RLS của tenant.'
+            : 'Wraps optional sub-queries in sequential SAVEPOINT "ldx_sp_<n>" frames so a localized error never aborts the surrounding tenant RLS transaction.',
+        },
+      },
+      {
+        id: 'pg_sp',
+        title: isVi ? 'Phục hồi An toàn PG16' : 'PG16 Safe Recovery',
+        sub: ['RELEASE SAVEPOINT on OK', 'ROLLBACK TO SAVEPOINT on Err'],
+        icon: 'check-circle',
+        x: 776,
+        y: 194,
+        width: 272,
+        height: 72,
+        zoneId: 'savepoint-zone',
+        inspector: {
+          role: isVi ? 'Trạng thái Giao dịch Ngoài Nguyên vẹn' : 'Intact Outer Tenant Transaction State',
+          packageOrPort: 'PostgreSQL 16 Transaction Manager',
+          protocol: 'RELEASE SAVEPOINT | ROLLBACK TO SAVEPOINT',
+          payloadOrSchema: 'Outer app.current_org Tx remains committable',
+          responsibilities: isVi
+            ? 'Giải phóng savepoint khi thành công hoặc quay lui đúng điểm lưu khi có lỗi, giữ nguyên ngữ cảnh app.current_org của giao dịch ngoài.'
+            : 'Releases the savepoint on success or rolls back solely to the savepoint on error, keeping the outer app.current_org transaction healthy.',
         },
       },
     ],
     edges: [
-      { id: 'b1', from: 'client_pat', to: 'apisix_gw', label: 'ldx_pat', kind: 'flow' },
-      { id: 'b2', from: 'apisix_gw', to: 'pat_guard', label: 'Proxy', kind: 'flow' },
       {
-        id: 'b3',
-        from: 'pat_guard',
-        to: 'als_bypass',
-        label: 'app.current_org',
-        kind: 'flow',
-        points: [
-          [590, 120],
-          [590, 232],
-        ],
-      },
-      {
-        id: 'b4',
-        from: 'system_worker',
-        to: 'als_bypass',
-        label: 'rls_bypass=on',
+        id: 'w1',
+        from: 'sys_worker',
+        to: 'sys_tx',
+        label: 'Internal Tx',
         kind: 'primary',
         points: [
-          [836, 120],
-          [836, 184],
-          [704, 184],
-          [704, 232],
+          [304, 86],
+          [404, 86],
         ],
       },
-      { id: 'b5', from: 'als_bypass', to: 'nocobase_role', label: 'SAVEPOINT', kind: 'primary' },
-      { id: 'b6', from: 'nocobase_role', to: 'pg16_policies', label: 'FORCE RLS', kind: 'primary' },
+      {
+        id: 'w2',
+        from: 'sys_tx',
+        to: 'pg_sys',
+        label: 'Short Tx',
+        kind: 'primary',
+        points: [
+          [676, 86],
+          [776, 86],
+        ],
+      },
+      {
+        id: 'w3',
+        from: 'opt_query',
+        to: 'sp_guard',
+        label: 'Wrap Query',
+        kind: 'flow',
+        points: [
+          [304, 230],
+          [404, 230],
+        ],
+      },
+      {
+        id: 'w4',
+        from: 'sp_guard',
+        to: 'pg_sp',
+        label: 'No 25P02',
+        kind: 'primary',
+        points: [
+          [676, 230],
+          [776, 230],
+        ],
+      },
     ],
     steps: [
       {
-        id: 'step-pat',
-        title: isVi ? 'PAT Verifier -> app.current_org (Tenant)' : 'PAT Verifier -> app.current_org (Tenant Scoped)',
-        activeNodes: ['client_pat', 'apisix_gw', 'pat_guard', 'als_bypass'],
-        activeEdges: ['b1', 'b2', 'b3'],
+        id: 'step-worker-bypass',
+        title: isVi ? 'withSystemRlsBypass (Worker Nội bộ)' : 'withSystemRlsBypass (Internal Workers)',
+        activeNodes: ['sys_worker', 'sys_tx', 'pg_sys'],
+        activeEdges: ['w1', 'w2'],
         description: isVi
-          ? 'PAT Verifier băm khóa bằng SHA-256 (timingSafeEqualHex), chặn leo thang vai trò và truyền app.current_org theo tenant vào ALS Tx & Savepoint Guard (không bao giờ bật bypass).'
-          : 'PAT Verifier hashes ldx_pat_* via SHA-256 (timingSafeEqualHex), clamps roles, and binds tenant-scoped app.current_org into ALS Tx & Savepoint Guard.',
-        route: 'Authorization: Bearer ldx_pat_<8hex>_<32hex>',
-        payload: "set_config('app.current_org', :orgId, true) · 7 scopes",
-        chips: ['Tenant Scoped', 'timingSafeEqualHex'],
-      },
-      {
-        id: 'step-bypass',
-        title: isVi ? 'System Worker -> app.rls_bypass=on (Tx Nội bộ)' : 'System Worker -> app.rls_bypass=on (Internal Tx)',
-        activeNodes: ['system_worker', 'als_bypass'],
-        activeEdges: ['b4'],
-        description: isVi
-          ? 'Chỉ các worker nền nội bộ (outbox, SLA) mới dùng withSystemRlsBypass để bật app.rls_bypass=on trong giao dịch ngắn và tự khôi phục khi xong.'
-          : 'Only internal background workers (outbox, SLA) use withSystemRlsBypass to enable app.rls_bypass=on locally for the duration of a short transaction.',
-        route: 'withSystemRlsBypass(fn) -> ALS Tx Guard',
+          ? 'Chỉ các worker nền nội bộ (outbox, SLA, bootstrap) mới dùng withSystemRlsBypass để đặt app.rls_bypass=\'on\' cục bộ trong giao dịch ngắn; mọi token ldx_pat_* đều chạy theo luồng app.current_org.'
+          : 'Only internal background workers (outbox, SLA, bootstrap) call withSystemRlsBypass to set transaction-local app.rls_bypass=\'on\'; ldx_pat_* requests always use tenant app.current_org.',
+        route: 'Internal Worker -> withSystemRlsBypass -> PG16 Short Tx',
         payload: "SELECT set_config('app.rls_bypass', 'on', true);",
-        chips: ['Internal Tx Only', 'Auto-Reset'],
+        chips: ['Internal Tx Only', 'Auto-Reset', 'No ldx_pat_* Mix'],
       },
       {
-        id: 'step-savepoint',
-        title: isVi ? 'runInRlsSavepoint & Chính sách PG16' : 'runInRlsSavepoint & PG16 FORCE RLS',
-        activeNodes: ['als_bypass', 'nocobase_role', 'pg16_policies'],
-        activeEdges: ['b5', 'b6'],
+        id: 'step-savepoint-guard',
+        title: isVi ? 'runInRlsSavepoint (Chống 25P02)' : 'runInRlsSavepoint (25P02 Guard)',
+        activeNodes: ['opt_query', 'sp_guard', 'pg_sp'],
+        activeEdges: ['w3', 'w4'],
         description: isVi
-          ? 'runInRlsSavepoint bọc truy vấn bằng SAVEPOINT "ldx_sp_<n>" trước khi nocobase_app đánh giá chính sách lattice_tenant_isolation trên PG16.'
-          : 'runInRlsSavepoint wraps optional queries in SAVEPOINT "ldx_sp_<n>" while nocobase_app evaluates lattice_tenant_isolation on PG16.',
+          ? 'runInRlsSavepoint bọc truy vấn tùy chọn bằng SAVEPOINT "ldx_sp_<n>" để nếu có lỗi SQL thì chỉ quay lui về savepoint, không làm hỏng giao dịch RLS ngoài.'
+          : 'runInRlsSavepoint wraps optional queries in SAVEPOINT "ldx_sp_<n>" so localized SQL failures roll back only to the savepoint instead of aborting the outer transaction (25P02).',
         route: 'SAVEPOINT "ldx_sp_<n>" -> RELEASE / ROLLBACK TO SAVEPOINT',
-        payload: 'USING + WITH CHECK on 56 static + latticeCustom* tables',
-        chips: ['No 25P02 Poison', 'WITH CHECK'],
+        payload: 'Outer app.current_org transaction stays valid',
+        chips: ['No 25P02 Poison', 'Sequential Savepoints'],
       },
     ],
   };
 
-  return [tenantMode, bypassMode];
+  return [tenantMode, workerMode];
 });
 </script>
 
@@ -557,7 +525,7 @@ const modes = computed<DiagramMode[]>(() => {
   <DiagramCanvas
     :title="title"
     :caption="caption"
-    viewBox="0 0 960 444"
+    viewBox="0 0 1200 336"
     :modes="modes"
     :lang="resolvedLang"
   />

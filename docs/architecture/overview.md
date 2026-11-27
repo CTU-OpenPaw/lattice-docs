@@ -103,8 +103,6 @@ Môi trường phát triển cục bộ gán toàn bộ cổng dịch vụ vào 
 
 Dự án duy trì cấu trúc 4 kho độc lập theo giấy phép Pure-OSI (`Apache-2.0`), tách biệt mã nguồn mở lõi, cổng tài liệu, thư viện mẫu GitOps và hồ sơ quản trị tổ chức.
 
-<EcosystemTopologyDiagram />
-
 | Kho mã nguồn | Giấy phép | Vai trò kỹ thuật | Liên kết |
 | :--- | :--- | :--- | :--- |
 | **`CTU-OpenPaw/lattice-dx`** | `Apache-2.0` | Mã nguồn lõi nền tảng `v0.4.2`: 7 plugin `@latticedx/*`, dịch vụ Fastify API `/v1/*`, AI worker, sidecar `file-scanner`, cấu hình Compose và tập lệnh sao lưu/khôi phục | [GitHub `lattice-dx`](https://github.com/CTU-OpenPaw/lattice-dx) |

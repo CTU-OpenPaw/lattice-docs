@@ -29,7 +29,7 @@ export type IconName =
 
 export type DiagramLocale = 'vi' | 'en';
 
-export type DiagramZoneKind = 'admin' | 'traffic' | 'external';
+export type DiagramZoneKind = 'admin' | 'traffic' | 'external' | 'band';
 
 export interface DiagramZone {
   id: string;
@@ -43,9 +43,10 @@ export interface DiagramZone {
   /** Height on a 4px grid */
   height: number;
   /**
-   * 'admin': rx=0 with 24px header strip
-   * 'traffic': rx=8 solid hairline
-   * 'external': rx=8 dashed hairline
+   * 'admin': subtle filled panel with header rule
+   * 'traffic': rx=6 solid hairline container
+   * 'external': rx=6 dashed hairline container
+   * 'band': full-width horizontal layer band
    */
   kind: DiagramZoneKind;
 }
@@ -58,12 +59,14 @@ export interface DiagramNodeInspector {
   responsibilities: string;
 }
 
+export type DiagramNodeTone = 'default' | 'accent' | 'flow' | 'muted';
+
 export interface DiagramNode {
   id: string;
-  /** Concise 1-3 word title */
+  /** Concise title (auto-wraps cleanly up to 2 lines) */
   title: string;
-  /** Single monospace technical tag (port, protocol, package, or collection) */
-  sub: string;
+  /** Monospace technical tag(s) — single string or multi-line array */
+  sub?: string | string[];
   icon: IconName;
   /** X coordinate on a 4px grid */
   x: number;
@@ -71,26 +74,34 @@ export interface DiagramNode {
   y: number;
   /** Width on a 4px grid (defaults to 160) */
   width?: number;
-  /** Height on a 4px grid (defaults to 64) */
+  /** Height on a 4px grid (defaults to 64; expands automatically if multi-line text needs more height) */
   height?: number;
   zoneId?: string;
   focal?: boolean;
+  /** Optional dashed card stroke for opt-in / optional subsystems */
+  dashed?: boolean;
+  /** Optional semantic card tone */
+  tone?: DiagramNodeTone;
   inspector: DiagramNodeInspector;
 }
 
-export type DiagramEdgeKind = 'primary' | 'flow' | 'dashed';
+export type DiagramEdgeKind = 'primary' | 'flow' | 'dashed' | 'return';
 
 export interface DiagramEdge {
   id: string;
   from: string;
   to: string;
-  /** Concise 1-2 word edge label */
+  /** Concise edge label */
   label?: string;
   kind?: DiagramEdgeKind;
   /** Explicit routed waypoints [[x, y], ...] */
   points?: Array<[number, number]>;
   /** Renders a clean loop arc above or below a single node */
   selfLoop?: 'top' | 'bottom';
+  /** Optional [dx, dy] offset for edge label pill */
+  labelOffset?: [number, number];
+  /** Optional 0..1 fraction along edge path for label placement (default 0.5) */
+  labelPosition?: number;
 }
 
 export interface DiagramStep {
@@ -108,6 +119,8 @@ export interface DiagramMode {
   id: string;
   label: string;
   summary?: string;
+  /** Optional per-mode SVG viewBox overriding the canvas default */
+  viewBox?: string;
   zones?: DiagramZone[];
   nodes: DiagramNode[];
   edges: DiagramEdge[];

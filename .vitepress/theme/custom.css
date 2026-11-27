@@ -13,12 +13,13 @@
   --ldx-border-strong: #D6D3D1;
   --ldx-ink: #0C0A09;
   --ldx-ink-2: #44403C;
-  --ldx-muted: #78716C;
+  --ldx-muted: #68625D;
   --ldx-accent: #D94E1F;
   --ldx-accent-text: #AF4204;
   --ldx-accent-soft: rgba(217, 78, 31, 0.10);
   --ldx-flow: #2563EB;
   --ldx-flow-soft: rgba(37, 99, 235, 0.10);
+  --ldx-return: #475569;
 
   --vp-font-family-base: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --vp-font-family-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -54,13 +55,14 @@
   --ldx-border: #232732;
   --ldx-border-strong: #323846;
   --ldx-ink: #F5F5F4;
-  --ldx-ink-2: #A1A1AA;
-  --ldx-muted: #71717A;
+  --ldx-ink-2: #D4D4D8;
+  --ldx-muted: #A1A1AA;
   --ldx-accent: #F06434;
   --ldx-accent-text: #FB923C;
   --ldx-accent-soft: rgba(240, 100, 52, 0.14);
   --ldx-flow: #60A5FA;
   --ldx-flow-soft: rgba(96, 165, 250, 0.14);
+  --ldx-return: #94A3B8;
 
   --vp-button-brand-text: #0C0A09;
   --vp-code-block-bg: var(--ldx-surface);

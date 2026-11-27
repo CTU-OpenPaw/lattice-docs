@@ -17,7 +17,6 @@ import CodeTabs from './components/CodeTabs.vue';
 import HomeLanding from './components/HomeLanding.vue';
 
 import PlatformPlanesDiagram from './components/PlatformPlanesDiagram.vue';
-import EcosystemTopologyDiagram from './components/EcosystemTopologyDiagram.vue';
 import PluginHostDiagram from './components/PluginHostDiagram.vue';
 import ZeroTrustRlsDiagram from './components/ZeroTrustRlsDiagram.vue';
 import PkiMerkleDiagram from './components/PkiMerkleDiagram.vue';
@@ -40,7 +39,6 @@ export default {
     app.component('HomeLanding', HomeLanding);
 
     app.component('PlatformPlanesDiagram', PlatformPlanesDiagram);
-    app.component('EcosystemTopologyDiagram', EcosystemTopologyDiagram);
     app.component('PluginHostDiagram', PluginHostDiagram);
     app.component('ZeroTrustRlsDiagram', ZeroTrustRlsDiagram);
     app.component('PkiMerkleDiagram', PkiMerkleDiagram);

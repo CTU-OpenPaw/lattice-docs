@@ -22,431 +22,157 @@ const resolvedLang = computed<DiagramLocale>(() => {
 
 const title = computed(() =>
   resolvedLang.value === 'vi'
-    ? 'Kiến trúc Triển khai Docker Compose, 5 Mạng Cô lập & Valkey/PG16'
-    : 'Docker Compose Profiles, 5 Isolated Networks & Valkey/PG16 Topology',
+    ? 'Kiến trúc Triển khai Docker Compose & 5 Mạng Cô lập (v0.4.2)'
+    : 'Docker Compose Deployment & 5 Isolated Networks (v0.4.2)',
 );
 
 const caption = computed(() =>
   resolvedLang.value === 'vi'
-    ? 'Toàn bộ image trong prod.yml khóa bằng @sha256 trên 5 mạng tách biệt (edge, app, data, scanner, iiot-net). Valkey 8.1 phân vùng DB 0/1/2 (không dùng Valkey Streams), còn Outbox và Event Bus chạy trên PostgreSQL 16 với FOR UPDATE SKIP LOCKED.'
-    : 'All prod.yml images pin immutable @sha256 digests across 5 isolated networks (edge, app, data, scanner, iiot-net). Valkey 8.1 partitions DB 0/1/2 (no Valkey Streams), while transactional outbox draining runs on PostgreSQL 16 with FOR UPDATE SKIP LOCKED.',
+    ? 'Toàn bộ container trong infra/compose/prod.yml ghim digest @sha256 trên 5 mạng tách biệt (edge, app, data, scanner, iiot-net). File-scanner (read_only) nhận tệp từ app, quét qua ClamAV trên mạng scanner rồi ghi sang RustFS trên mạng data; Valkey 8.1 tách DB 0/1/2.'
+    : 'All containers in infra/compose/prod.yml pin immutable @sha256 digests across 5 isolated networks (edge, app, data, scanner, iiot-net). Read-only file-scanner scans uploads via ClamAV on the scanner network before persisting clean objects to RustFS on the data network.',
 );
 
 const modes = computed<DiagramMode[]>(() => {
   const isVi = resolvedLang.value === 'vi';
 
-  const coreEdgeMode: DiagramMode = {
-    id: 'core-edge',
-    label: isVi ? 'Core & Edge Stack' : 'Core & Edge Stack',
-    summary: isVi
-      ? '4 mạng (edge, app, data, scanner) · Valkey DB 0/1/2 · PG16 Outbox'
-      : '4 networks (edge, app, data, scanner) · Valkey DB 0/1/2 · PG16 Outbox',
+  const coreNetworksMode: DiagramMode = {
+    id: 'core-networks',
+    label: isVi
+      ? 'Mạng Lõi (edge, app, data, scanner)'
+      : 'Core Networks (edge, app, data, scanner)',
+    viewBox: '0 0 1168 476',
     zones: [
       {
         id: 'net-edge',
         label: isVi ? 'MẠNG EDGE (BRIDGE)' : 'EDGE NETWORK (BRIDGE)',
         x: 16,
         y: 16,
-        width: 428,
-        height: 132,
+        width: 232,
+        height: 444,
         kind: 'admin',
       },
       {
         id: 'net-app',
-        label: isVi ? 'MẠNG APP (INTERNAL: TRUE)' : 'APP NETWORK (INTERNAL: TRUE)',
-        x: 460,
+        label: isVi ? 'MẠNG APP (INTERNAL)' : 'APP NETWORK (INTERNAL)',
+        x: 276,
         y: 16,
-        width: 444,
-        height: 132,
-        kind: 'traffic',
-      },
-      {
-        id: 'net-data',
-        label: isVi ? 'MẠNG DATA (INTERNAL: TRUE)' : 'DATA NETWORK (INTERNAL: TRUE)',
-        x: 16,
-        y: 184,
-        width: 600,
-        height: 244,
+        width: 232,
+        height: 248,
         kind: 'traffic',
       },
       {
         id: 'net-scanner',
-        label: isVi ? 'MẠNG SCANNER (INTERNAL: TRUE)' : 'SCANNER NETWORK (INTERNAL: TRUE)',
-        x: 632,
-        y: 184,
-        width: 272,
-        height: 244,
+        label: isVi ? 'MẠNG SCANNER (INTERNAL)' : 'SCANNER (INTERNAL: TRUE)',
+        x: 556,
+        y: 220,
+        width: 232,
+        height: 212,
         kind: 'external',
+      },
+      {
+        id: 'net-data',
+        label: isVi ? 'MẠNG DATA (INTERNAL: TRUE)' : 'DATA NETWORK (INTERNAL: TRUE)',
+        x: 848,
+        y: 16,
+        width: 304,
+        height: 444,
+        kind: 'admin',
       },
     ],
     nodes: [
       {
         id: 'caddy',
         title: 'Caddy 2.10',
-        sub: '@sha256 · :80/:443',
+        sub: [':80 / :443 · TLS 1.3', 'edge + app'],
         icon: 'globe',
-        x: 36,
+        x: 32,
         y: 56,
-        width: 168,
-        height: 64,
+        width: 200,
+        height: 72,
         zoneId: 'net-edge',
         inspector: {
           role: isVi ? 'Biên TLS & Reverse Proxy' : 'Edge TLS Termination Proxy',
           packageOrPort: 'caddy:2.10-alpine@sha256:4c6e91... · :80/:443',
           protocol: 'HTTPS / HTTP/3 · edge + app',
-          payloadOrSchema: '256m / 0.5 CPU · :2019/:2020 metrics',
+          payloadOrSchema: '256m / 0.5 CPU · :2020/metrics',
           responsibilities: isVi
-            ? 'Mở duy nhất cổng 80/443 ra ngoài trên mạng edge; chuyển tiếp lưu lượng sang APISIX và Keycloak qua mạng nội bộ app.'
-            : 'Exposes only ports 80/443 on the edge bridge; forwards traffic to APISIX and Keycloak over internal app networking.',
+            ? 'Mở duy nhất cổng 80/443 trên mạng edge; gắn header bảo mật và chuyển tiếp lưu lượng tới APISIX và Keycloak qua mạng nội bộ app.'
+            : 'Exposes only ports 80/443 on the edge bridge; applies security headers and proxies traffic to APISIX and Keycloak over internal app networking.',
         },
       },
       {
         id: 'apisix',
-        title: 'APISIX 3.19',
-        sub: '@sha256 · :9080',
+        title: 'Apache APISIX 3.19',
+        sub: [':9080 · JWKS / Limit', 'edge + app'],
         icon: 'shield',
-        x: 252,
-        y: 56,
-        width: 168,
-        height: 64,
+        x: 32,
+        y: 164,
+        width: 200,
+        height: 72,
         zoneId: 'net-edge',
         inspector: {
-          role: isVi ? 'Cổng Kiểm soát API' : 'Zero-Trust API Gateway',
+          role: isVi ? 'Cổng Kiểm soát API Zero-Trust' : 'Zero-Trust API Gateway',
           packageOrPort: 'apache/apisix:3.19.0-debian@sha256:9a7e45... · :9080',
           protocol: 'HTTP · edge + app',
-          payloadOrSchema: '512m / 1.0 CPU · config.prod.yaml:ro',
+          payloadOrSchema: '512m / 1.0 CPU · apisix.prod.yaml:ro',
           responsibilities: isVi
-            ? 'Kiểm tra JWT JWKS, gắn X-Request-Id, áp dụng CORS và đếm giới hạn tốc độ bằng Valkey trước khi vào NocoBase.'
-            : 'Validates JWT JWKS, attaches X-Request-Id, enforces CORS, and runs Valkey rate limiting ahead of NocoBase.',
-        },
-      },
-      {
-        id: 'nocobase',
-        title: 'NocoBase 2.2.50',
-        sub: '@sha256 · 7 Plugins',
-        icon: 'layers',
-        x: 480,
-        y: 56,
-        width: 184,
-        height: 64,
-        zoneId: 'net-app',
-        focal: true,
-        inspector: {
-          role: isVi ? 'Máy chủ DX-OS & 7 Plugin Pure-OSI' : 'DX-OS Host & 7 Pure-OSI Plugins',
-          packageOrPort: 'nocobase/nocobase:2.2.50@sha256:04b751... · :80',
-          protocol: 'HTTP · edge + app + data + iiot-net',
-          payloadOrSchema: '2048m / 2.0 CPU · @latticedx/* :ro',
-          responsibilities: isVi
-            ? 'Gắn 7 plugin Apache-2.0 ở chế độ chỉ đọc (:ro), kết nối PG16 bằng nocobase_app và điều phối outbox cùng tệp tin.'
-            : 'Mounts all 7 Apache-2.0 plugins read-only (:ro), connects to PG16 as nocobase_app, and coordinates outbox and file workflows.',
+            ? 'Xác thực JWT JWKS, gắn X-Request-Id, kiểm soát CORS và giới hạn tốc độ dựa trên Valkey trước khi chuyển vào NocoBase.'
+            : 'Validates JWT JWKS, attaches X-Request-Id, enforces strict CORS, and runs Valkey rate limiting ahead of NocoBase.',
         },
       },
       {
         id: 'keycloak',
-        title: 'Keycloak 26.8',
-        sub: '@sha256 · iam-sync',
+        title: 'Keycloak 26.8.2',
+        sub: ['OIDC PKCE S256', 'realm: lattice · iam-sync'],
         icon: 'key',
-        x: 716,
-        y: 56,
-        width: 168,
-        height: 64,
-        zoneId: 'net-app',
+        x: 32,
+        y: 356,
+        width: 200,
+        height: 76,
+        zoneId: 'net-edge',
         inspector: {
           role: isVi ? 'Hệ thống Định danh OIDC' : 'OIDC Identity & Realm Sync',
           packageOrPort: 'quay.io/keycloak/keycloak:26.8.2@sha256:7e66a9...',
           protocol: 'OIDC · edge + app + data · iam-sync profile',
           payloadOrSchema: '1536m / 1.5 CPU · keycloak_app DB',
           responsibilities: isVi
-            ? 'Chạy cấu hình realm lattice (đồng bộ qua profile iam-sync với keycloak-config-cli:6.5.1-26) và dùng DB riêng keycloak_app.'
-            : 'Serves the lattice realm (provisioned via iam-sync profile with keycloak-config-cli:6.5.1-26) backed by isolated keycloak_app DB.',
+            ? 'Phục vụ realm lattice (đồng bộ qua profile iam-sync với keycloak-config-cli:6.5.1-26) và dùng CSDL tách biệt keycloak_app.'
+            : 'Serves the lattice realm (synced via iam-sync profile with keycloak-config-cli:6.5.1-26) backed by its isolated keycloak_app database.',
         },
       },
       {
-        id: 'pg16_db',
-        title: 'PG16 + pgvector',
-        sub: 'Outbox SKIP LOCKED',
-        icon: 'database',
-        x: 36,
-        y: 228,
-        width: 236,
-        height: 64,
-        zoneId: 'net-data',
-        inspector: {
-          role: isVi ? 'CSDL Lõi, RLS & Hàng đợi Outbox' : 'Core DBs, FORCE RLS & Transactional Outbox',
-          packageOrPort: 'pgvector:0.8.1-pg16 & postgres:16.16-alpine · :5432',
-          protocol: 'PostgreSQL Wire · data internal',
-          payloadOrSchema: 'WAL PITR .gz · FOR UPDATE SKIP LOCKED',
-          responsibilities: isVi
-            ? 'Tách nocobase-db (nocobase_app, pgvector) và postgres (lattice_app, keycloak_app, n8n_app); rút outbox bằng FOR UPDATE SKIP LOCKED.'
-            : 'Separates nocobase-db (nocobase_app, pgvector) from postgres (lattice_app, keycloak_app, n8n_app); drains outbox via FOR UPDATE SKIP LOCKED.',
-        },
-      },
-      {
-        id: 'valkey',
-        title: 'Valkey 8.1',
-        sub: 'DB0/1/2 · No Streams',
-        icon: 'server',
-        x: 356,
-        y: 228,
-        width: 240,
-        height: 64,
-        zoneId: 'net-data',
-        inspector: {
-          role: isVi ? 'Bộ nhớ Đệm, PubSub & Phiên OIDC' : 'Partitioned Cache, PubSub & OIDC Store',
-          packageOrPort: 'valkey/valkey:8.1-alpine@sha256:997109... · :6379',
-          protocol: 'RESP · app + data · AOF 512mb allkeys-lru',
-          payloadOrSchema: 'DB 0 Cache · DB 1 PubSub · DB 2 Auth (No Streams)',
-          responsibilities: isVi
-            ? 'DB 0 lưu cache NocoBase, DB 1 phát PubSub latticedx:surface-updates tới SSE, DB 2 giữ OIDC state/ticket/revoked; không dùng Valkey Streams.'
-            : 'DB 0 holds app cache, DB 1 routes latticedx:surface-updates PubSub to SSE, DB 2 stores OIDC state/tickets/revocations; Valkey Streams is not used.',
-        },
-      },
-      {
-        id: 'rustfs',
-        title: 'RustFS 1.0.6',
-        sub: '@sha256 · S3 :9000',
-        icon: 'box',
-        x: 36,
-        y: 340,
-        width: 236,
-        height: 64,
-        zoneId: 'net-data',
-        inspector: {
-          role: isVi ? 'Kho Đối tượng S3 Nội bộ' : 'Internal S3 Object Storage',
-          packageOrPort: 'rustfs/rustfs:1.0.6@sha256:ee7170... · :9000',
-          protocol: 'S3 HTTP · data internal',
-          payloadOrSchema: '1024m / 1.0 CPU · rustfs-data',
-          responsibilities: isVi
-            ? 'Lưu trữ tệp đính kèm và bằng chứng đã qua quét mã độc chỉ trong mạng data nội bộ, không mở cổng ra ngoài.'
-            : 'Stores scanned attachments and artifact objects exclusively inside the internal data network with zero public exposure.',
-        },
-      },
-      {
-        id: 'file_scanner',
-        title: 'File Scanner',
-        sub: 'read_only · :4010',
-        icon: 'file-text',
-        x: 652,
-        y: 228,
-        width: 232,
-        height: 64,
-        zoneId: 'net-scanner',
-        inspector: {
-          role: isVi ? 'Dịch vụ Kiểm dịch Tệp tải lên' : 'Upload Quarantine & Scan Bridge',
-          packageOrPort: 'apps/file-scanner · :4010',
-          protocol: 'HTTP -> ClamAV · app + data + scanner',
-          payloadOrSchema: 'read_only: true · tmpfs /tmp · 256m',
-          responsibilities: isVi
-            ? 'Nhận tệp từ mạng app ở chế độ read_only, chuyển qua mạng scanner cô lập tới ClamAV trước khi lưu vào RustFS.'
-            : 'Accepts uploads on a read_only root filesystem, forwards bytes across the isolated scanner network to ClamAV, and writes clean objects.',
-        },
-      },
-      {
-        id: 'clamav',
-        title: 'ClamAV 1.5.5',
-        sub: '@sha256 · :3310',
-        icon: 'lock',
-        x: 652,
-        y: 340,
-        width: 232,
-        height: 64,
-        zoneId: 'net-scanner',
-        inspector: {
-          role: isVi ? 'Bộ quét Mã độc Cô lập' : 'Isolated Antivirus Daemon',
-          packageOrPort: 'clamav/clamav:1.5.5@sha256:121774... · :3310',
-          protocol: 'TCP clamd · scanner internal only',
-          payloadOrSchema: '2048m / 1.0 CPU · tmpfs /tmp /run/clamav',
-          responsibilities: isVi
-            ? 'Chỉ gắn vào mạng scanner (internal: true), không thể truy cập CSDL hay dịch vụ ứng dụng; quét tệp qua cổng 3310.'
-            : 'Attached solely to the internal scanner network with zero access to app or database services; inspects payloads on port 3310.',
-        },
-      },
-    ],
-    edges: [
-      { id: 'c1', from: 'caddy', to: 'apisix', label: 'TLS', kind: 'primary' },
-      { id: 'c2', from: 'apisix', to: 'nocobase', label: 'Proxy', kind: 'primary' },
-      { id: 'c3', from: 'nocobase', to: 'keycloak', label: 'OIDC', kind: 'flow' },
-      { id: 'c4', from: 'nocobase', to: 'valkey', label: 'DB0/1/2', kind: 'flow' },
-      {
-        id: 'c5',
-        from: 'nocobase',
-        to: 'pg16_db',
-        label: 'FORCE RLS',
-        kind: 'primary',
-        points: [
-          [508, 120],
-          [508, 168],
-          [156, 168],
-          [156, 228],
-        ],
-      },
-      {
-        id: 'c6',
-        from: 'nocobase',
-        to: 'file_scanner',
-        label: 'Upload',
-        kind: 'flow',
-        points: [
-          [624, 120],
-          [624, 168],
-          [768, 168],
-          [768, 228],
-        ],
-      },
-      { id: 'c7', from: 'file_scanner', to: 'clamav', label: 'Scan', kind: 'primary' },
-      {
-        id: 'c8',
-        from: 'file_scanner',
-        to: 'rustfs',
-        label: 'Clean S3',
-        kind: 'flow',
-        points: [
-          [652, 260],
-          [612, 260],
-          [612, 372],
-          [272, 372],
-        ],
-      },
-    ],
-    steps: [
-      {
-        id: 'step-core-edge',
-        title: isVi ? 'Biên Edge -> App qua Ảnh Khóa @sha256' : 'Edge to App over @sha256 Images',
-        activeNodes: ['caddy', 'apisix', 'nocobase', 'keycloak'],
-        activeEdges: ['c1', 'c2', 'c3'],
-        description: isVi
-          ? 'Caddy và APISIX nằm ở vùng giao tiếp edge/app, định tuyến yêu cầu đã xác thực JWKS tới NocoBase và Keycloak.'
-          : 'Caddy and APISIX bridge edge and app networks, routing JWKS-validated requests to NocoBase and Keycloak.',
-        route: 'edge (bridge) -> app (internal: true)',
-        payload: 'Every service pinned to @sha256 digest in prod.yml',
-        chips: ['edge + app', 'OIDC iam-sync'],
-      },
-      {
-        id: 'step-core-valkey',
-        title: isVi ? 'Phân vùng Valkey 8.1 DB 0/1/2' : 'Valkey 8.1 DB 0/1/2 Partitioning',
-        activeNodes: ['nocobase', 'valkey'],
-        activeEdges: ['c4'],
-        description: isVi
-          ? 'Valkey 8.1 tách rạch ròi DB 0 (Cache), DB 1 (PubSub SSE surface-updates) và DB 2 (OIDC PKCE state/ticket/revocation); không dùng Valkey Streams.'
-          : 'Valkey 8.1 isolates DB 0 (Cache), DB 1 (PubSub SSE surface-updates), and DB 2 (OIDC PKCE state/ticket/revocation); Valkey Streams is not used.',
-        route: 'redis://:***@redis:6379/{0,1,2}',
-        payload: '--appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru',
-        chips: ['DB 0/1/2', 'No Valkey Streams'],
-      },
-      {
-        id: 'step-core-pg16',
-        title: isVi ? 'PG16 FORCE RLS & Outbox SKIP LOCKED' : 'PG16 FORCE RLS & Outbox SKIP LOCKED',
-        activeNodes: ['nocobase', 'pg16_db'],
-        activeEdges: ['c5'],
-        description: isVi
-          ? 'Dữ liệu tổ chức và hàng đợi Outbox/Event Bus nằm hoàn toàn trên mạng data (internal: true), rút việc bằng FOR UPDATE SKIP LOCKED.'
-          : 'Tenant data and transactional outbox queues stay inside the internal data network, drained via PostgreSQL FOR UPDATE SKIP LOCKED.',
-        route: 'data (internal: true) · :5432',
-        payload: 'FOR UPDATE OF o SKIP LOCKED · WAL .gz PITR',
-        chips: ['data internal', 'PG16 Outbox'],
-      },
-      {
-        id: 'step-core-scanner',
-        title: isVi ? 'Mạng Scanner Cô lập & Kho RustFS S3' : 'Isolated Scanner Network & RustFS S3',
-        activeNodes: ['nocobase', 'file_scanner', 'clamav', 'rustfs'],
-        activeEdges: ['c6', 'c7', 'c8'],
-        description: isVi
-          ? 'Tệp tải lên qua file-scanner (read_only) được quét bởi ClamAV trên mạng scanner riêng trước khi ghi vào RustFS trên mạng data.'
-          : 'Uploads pass through read_only file-scanner to ClamAV on the isolated scanner network before clean persistence in RustFS.',
-        route: 'scanner (internal: true) -> data (internal: true)',
-        payload: 'clamav:3310 -> rustfs:9000',
-        chips: ['scanner internal', 'read_only: true'],
-      },
-    ],
-  };
-
-  const aiObsMode: DiagramMode = {
-    id: 'ai-obs',
-    label: isVi ? 'AI, PDF & Observability' : 'AI, PDF & Observability',
-    summary: isVi
-      ? 'Profile observability + pdf · OTel GenAI · Prometheus 3.3 · pgvector'
-      : 'observability + pdf profiles · OTel GenAI · Prometheus 3.3 · pgvector',
-    zones: [
-      {
-        id: 'obs-app',
-        label: isVi ? 'MẠNG APP (DEFAULT + PROFILE: PDF)' : 'APP NETWORK (DEFAULT + PROFILE: PDF)',
-        x: 16,
-        y: 16,
-        width: 488,
-        height: 244,
-        kind: 'traffic',
-      },
-      {
-        id: 'obs-profile',
-        label: isVi ? 'PROFILE: OBSERVABILITY (APP + DATA)' : 'PROFILE: OBSERVABILITY (APP + DATA)',
-        x: 520,
-        y: 16,
-        width: 424,
-        height: 412,
-        kind: 'external',
-      },
-      {
-        id: 'obs-data',
-        label: isVi ? 'MẠNG DATA (PGVECTOR + TRACES)' : 'DATA NETWORK (PGVECTOR + TRACES)',
-        x: 16,
-        y: 288,
-        width: 488,
-        height: 140,
-        kind: 'admin',
-      },
-    ],
-    nodes: [
-      {
-        id: 'nocobase_obs',
+        id: 'nocobase',
         title: 'NocoBase 2.2.50',
-        sub: 'OTel GenAI + :metrics',
-        icon: 'bot',
-        x: 36,
-        y: 64,
-        width: 196,
-        height: 64,
-        zoneId: 'obs-app',
+        sub: ['7 Plugins :ro · :80', 'PG16 RLS & Outbox'],
+        icon: 'layers',
+        x: 292,
+        y: 56,
+        width: 200,
+        height: 80,
+        zoneId: 'net-app',
         focal: true,
         inspector: {
-          role: isVi ? 'Nguồn Span GenAI & Chỉ số Ứng dụng' : 'GenAI Span & App Metrics Emitter',
-          packageOrPort: 'otel-exporter.js · observability.js',
-          protocol: 'OTLP HTTP :4318 + GET /api/dxos:metrics',
-          payloadOrSchema: 'Queue 256 · Batch 64 · PII Scrubbed',
+          role: isVi ? 'Máy chủ DX-OS & 7 Plugin Apache-2.0' : 'DX-OS Host & 7 Apache-2.0 Plugins',
+          packageOrPort: 'nocobase/nocobase:2.2.50@sha256:04b751... · :80',
+          protocol: 'HTTP · edge + app + data + iiot-net',
+          payloadOrSchema: '2048m / 2.0 CPU · @latticedx/* :ro',
           responsibilities: isVi
-            ? 'Gắn ngữ nghĩa OTel GenAI (gen_ai.system, token), che CCCD/Phone/Bank/MST/JWT/Email trước khi gửi OTLP và xuất 16 nhóm chỉ số Prometheus.'
-            : 'Attaches OTel GenAI attributes, scrubs CCCD/Phone/Bank/MST/JWT/Email PII before OTLP export, and serves 16 Prometheus metric families.',
-        },
-      },
-      {
-        id: 'caddy_obs',
-        title: 'Caddy 2.10',
-        sub: ':2020/metrics',
-        icon: 'globe',
-        x: 296,
-        y: 64,
-        width: 188,
-        height: 64,
-        zoneId: 'obs-app',
-        inspector: {
-          role: isVi ? 'Điểm Thu thập Chỉ số Biên' : 'Edge Proxy Metrics Target',
-          packageOrPort: 'caddy:2.10-alpine · :2020/metrics',
-          protocol: 'Prometheus Pull · app internal',
-          payloadOrSchema: 'Job: caddy:2020',
-          responsibilities: isVi
-            ? 'Cung cấp thông lượng HTTP, mã trạng thái TLS và độ trễ biên cho Prometheus.'
-            : 'Exposes edge TLS throughput, status counters, and upstream latency metrics to Prometheus.',
+            ? 'Gắn 7 plugin @latticedx/* chỉ đọc (:ro), thực thi AsyncLocalStorage FORCE RLS qua nocobase_app và điều phối outbox cùng tệp tin.'
+            : 'Mounts all 7 @latticedx/* plugins read-only (:ro), enforces AsyncLocalStorage FORCE RLS as nocobase_app, and orchestrates outbox and upload flows.',
         },
       },
       {
         id: 'gotenberg',
-        title: 'Gotenberg 8.20',
-        sub: 'profile:pdf · JS Off',
+        title: 'Gotenberg 8.20.1',
+        sub: ['profile: pdf · :3000', 'read_only · JS disabled'],
         icon: 'file-text',
-        x: 36,
+        x: 292,
         y: 176,
-        width: 184,
-        height: 64,
-        zoneId: 'obs-app',
+        width: 200,
+        height: 72,
+        zoneId: 'net-app',
+        dashed: true,
+        tone: 'muted',
         inspector: {
           role: isVi ? 'Dịch vụ Kết xuất PDF Chứng từ' : 'Hardened PDF Voucher Renderer',
           packageOrPort: 'gotenberg/gotenberg:8.20.1@sha256:cda438... · :3000',
@@ -458,530 +184,721 @@ const modes = computed<DiagramMode[]>(() => {
         },
       },
       {
-        id: 'keycloak_obs',
-        title: 'Keycloak 26.8',
-        sub: ':9000 · KC_METRICS',
-        icon: 'key',
-        x: 300,
-        y: 176,
-        width: 184,
+        id: 'file_scanner',
+        title: 'File Scanner',
+        sub: [':4010 · read_only: true', 'app + data + scanner'],
+        icon: 'shield',
+        x: 572,
+        y: 256,
+        width: 200,
         height: 64,
-        zoneId: 'obs-app',
+        zoneId: 'net-scanner',
         inspector: {
-          role: isVi ? 'Điểm Thu thập Chỉ số Định danh' : 'Identity Provider Metrics Target',
-          packageOrPort: 'keycloak:26.8.2 · :9000/metrics',
-          protocol: 'Prometheus Pull · KC_METRICS_ENABLED=true',
-          payloadOrSchema: 'Job: keycloak:9000',
+          role: isVi ? 'Dịch vụ Kiểm dịch Tệp tải lên' : 'Upload Quarantine & Scan Bridge',
+          packageOrPort: 'apps/file-scanner · :4010',
+          protocol: 'HTTP -> ClamAV · app + data + scanner',
+          payloadOrSchema: 'read_only: true · tmpfs /tmp · 256m',
           responsibilities: isVi
-            ? 'Báo cáo lượt đăng nhập OIDC, thất bại xác thực và tình trạng kết nối keycloak_app.'
-            : 'Reports OIDC login counts, authentication errors, and keycloak_app pool telemetry.',
+            ? 'Nhận tệp từ NocoBase trên mạng app, chuyển qua mạng scanner cô lập tới ClamAV rồi ghi tệp sạch sang RustFS trên mạng data.'
+            : 'Accepts uploads from NocoBase on app, streams bytes across the isolated scanner network to ClamAV, and persists clean objects to RustFS on data.',
         },
       },
       {
-        id: 'pgvector_rag',
-        title: 'pgvector 0.8.1 (PG16)',
-        sub: 'HNSW 1536d · AiTraces',
+        id: 'clamav',
+        title: 'ClamAV 1.5.5',
+        sub: [':3310 · Malware Scan', 'scanner internal only'],
+        icon: 'lock',
+        x: 572,
+        y: 356,
+        width: 200,
+        height: 64,
+        zoneId: 'net-scanner',
+        inspector: {
+          role: isVi ? 'Bộ quét Mã độc Cô lập' : 'Isolated Antivirus Daemon',
+          packageOrPort: 'clamav/clamav:1.5.5@sha256:121774... · :3310',
+          protocol: 'TCP clamd · scanner internal only',
+          payloadOrSchema: '2048m / 1.0 CPU · tmpfs /tmp /run/clamav',
+          responsibilities: isVi
+            ? 'Chỉ gắn duy nhất vào mạng scanner (internal: true), không thể chạm tới CSDL hay dịch vụ ứng dụng; kiểm tra mã độc qua cổng 3310.'
+            : 'Attached solely to the internal scanner network with zero access to app or database services; scans payloads over TCP port 3310.',
+        },
+      },
+      {
+        id: 'nocobase_db',
+        title: 'nocobase-db (PG16)',
+        sub: ['pgvector 0.8.1 · :5432', '56+ FORCE RLS · Outbox'],
         icon: 'database',
-        x: 36,
-        y: 336,
-        width: 268,
-        height: 64,
-        zoneId: 'obs-data',
+        x: 864,
+        y: 52,
+        width: 272,
+        height: 76,
+        zoneId: 'net-data',
+        focal: true,
         inspector: {
-          role: isVi ? 'Kho Vector Hybrid RAG & Dấu vết AI' : 'Hybrid RAG Vector & AI Trace Store',
-          packageOrPort: 'pgvector/pgvector:0.8.1-pg16@sha256:33198d...',
-          protocol: 'PostgreSQL + HNSW · data internal',
-          payloadOrSchema: 'latticeParaChunks (1536d) · latticeAiTraces',
+          role: isVi ? 'CSDL Lõi FORCE RLS & Vector RAG' : 'Core FORCE RLS & Vector Database',
+          packageOrPort: 'pgvector/pgvector:0.8.1-pg16@sha256:33198d... · :5432',
+          protocol: 'PostgreSQL Wire · data internal',
+          payloadOrSchema: 'nocobase_app (NOBYPASSRLS) · 56 static + latticeCustom*',
           responsibilities: isVi
-            ? 'Lưu vector nhúng P.A.R.A. cho tìm kiếm lai HNSW + BM25 RRF cùng nhật ký suy luận và hạn mức token.'
-            : 'Stores 1536-dim P.A.R.A. vectors for HNSW + BM25 RRF retrieval alongside AI trace and quota records.',
+            ? 'Thực thi FORCE ROW LEVEL SECURITY cho 56 bảng tĩnh và bảng động latticeCustom*, lưu vector 1536d và hàng đợi Outbox SKIP LOCKED.'
+            : 'Enforces FORCE ROW LEVEL SECURITY across 56 static and dynamic latticeCustom* tables, stores 1536d vectors, and drains SKIP LOCKED outbox queues.',
         },
       },
       {
-        id: 'otel_collector',
-        title: 'OTel Collector',
-        sub: ':4318 OTLP · :8889',
-        icon: 'activity',
-        x: 604,
-        y: 64,
-        width: 248,
+        id: 'valkey',
+        title: 'Valkey 8.1',
+        sub: [':6379 · AOF 512mb', 'DB0 Cache · DB1 SSE · DB2 Auth'],
+        icon: 'server',
+        x: 864,
+        y: 152,
+        width: 272,
+        height: 80,
+        zoneId: 'net-data',
+        inspector: {
+          role: isVi ? 'Bộ nhớ Đệm, PubSub & Phiên OIDC' : 'Partitioned Cache, PubSub & OIDC Store',
+          packageOrPort: 'valkey/valkey:8.1-alpine@sha256:997109... · :6379',
+          protocol: 'RESP · app + data · allkeys-lru',
+          payloadOrSchema: 'DB 0 Cache · DB 1 PubSub · DB 2 PKCE/Revoked',
+          responsibilities: isVi
+            ? 'DB 0 lưu cache NocoBase, DB 1 phát PubSub latticedx:surface-updates tới SSE, DB 2 giữ OIDC PKCE state/ticket/revoked (không dùng Streams).'
+            : 'DB 0 caches app state, DB 1 routes latticedx:surface-updates PubSub to SSE, DB 2 stores OIDC PKCE state/tickets/revocations (no Streams).',
+        },
+      },
+      {
+        id: 'rustfs',
+        title: 'RustFS 1.0.6',
+        sub: [':9000 · S3 Storage', 'Scanned Objects'],
+        icon: 'box',
+        x: 864,
+        y: 256,
+        width: 272,
         height: 64,
-        zoneId: 'obs-profile',
+        zoneId: 'net-data',
+        inspector: {
+          role: isVi ? 'Kho Đối tượng S3 Nội bộ' : 'Internal S3 Object Storage',
+          packageOrPort: 'rustfs/rustfs:1.0.6@sha256:ee7170... · :9000',
+          protocol: 'S3 HTTP · data internal only',
+          payloadOrSchema: '1024m / 1.0 CPU · rustfs-data',
+          responsibilities: isVi
+            ? 'Lưu trữ tệp đính kèm và bằng chứng đã qua quét ClamAV hoàn toàn bên trong mạng data, không mở cổng công khai.'
+            : 'Stores ClamAV-cleared attachments and evidence artifacts exclusively inside the internal data network with zero public exposure.',
+        },
+      },
+      {
+        id: 'postgres',
+        title: 'PostgreSQL 16.16',
+        sub: [':5432 · Isolated DBs', 'keycloak_app · lattice_app'],
+        icon: 'database',
+        x: 864,
+        y: 356,
+        width: 272,
+        height: 76,
+        zoneId: 'net-data',
+        inspector: {
+          role: isVi ? 'Cụm Postgres Dịch vụ Tách biệt' : 'Isolated Service Postgres Cluster',
+          packageOrPort: 'postgres:16.16-alpine · :5432',
+          protocol: 'PostgreSQL Wire · data internal',
+          payloadOrSchema: 'keycloak_app · lattice_app · n8n_app',
+          responsibilities: isVi
+            ? 'Tách dữ liệu định danh Keycloak và n8n khỏi cụm dữ liệu tenant của nocobase-db để cô lập quyền hạn và sao lưu PITR.'
+            : 'Isolates Keycloak identity and optional n8n workflow state from the nocobase-db tenant cluster for strict least-privilege separation.',
+        },
+      },
+    ],
+    edges: [
+      {
+        id: 'c1',
+        from: 'caddy',
+        to: 'apisix',
+        label: 'TLS 1.3',
+        kind: 'primary',
+        points: [
+          [132, 128],
+          [132, 164],
+        ],
+      },
+      {
+        id: 'c2',
+        from: 'keycloak',
+        to: 'apisix',
+        label: 'JWKS / OIDC',
+        kind: 'flow',
+        points: [
+          [132, 356],
+          [132, 236],
+        ],
+      },
+      {
+        id: 'c3',
+        from: 'apisix',
+        to: 'nocobase',
+        label: 'Proxy',
+        kind: 'primary',
+        points: [
+          [232, 200],
+          [262, 200],
+          [262, 96],
+          [292, 96],
+        ],
+      },
+      {
+        id: 'c4',
+        from: 'nocobase',
+        to: 'gotenberg',
+        label: 'PDF',
+        kind: 'dashed',
+        points: [
+          [392, 136],
+          [392, 176],
+        ],
+      },
+      {
+        id: 'c5',
+        from: 'nocobase',
+        to: 'nocobase_db',
+        label: 'FORCE RLS',
+        kind: 'primary',
+        points: [
+          [492, 82],
+          [864, 82],
+        ],
+      },
+      {
+        id: 'c6',
+        from: 'nocobase',
+        to: 'valkey',
+        label: 'DB 0/1/2',
+        kind: 'flow',
+        labelPosition: 0.65,
+        points: [
+          [492, 104],
+          [544, 104],
+          [544, 192],
+          [864, 192],
+        ],
+      },
+      {
+        id: 'c7',
+        from: 'nocobase',
+        to: 'file_scanner',
+        label: 'Upload',
+        kind: 'flow',
+        labelPosition: 0.55,
+        points: [
+          [492, 124],
+          [526, 124],
+          [526, 288],
+          [572, 288],
+        ],
+      },
+      {
+        id: 'c8',
+        from: 'file_scanner',
+        to: 'clamav',
+        label: 'Scan :3310',
+        kind: 'primary',
+        points: [
+          [672, 320],
+          [672, 356],
+        ],
+      },
+      {
+        id: 'c9',
+        from: 'file_scanner',
+        to: 'rustfs',
+        label: 'Clean S3',
+        kind: 'flow',
+        points: [
+          [772, 288],
+          [864, 288],
+        ],
+      },
+      {
+        id: 'c10',
+        from: 'keycloak',
+        to: 'postgres',
+        label: 'keycloak_app',
+        kind: 'dashed',
+        points: [
+          [232, 396],
+          [262, 396],
+          [262, 444],
+          [832, 444],
+          [832, 396],
+          [864, 396],
+        ],
+      },
+    ],
+    steps: [
+      {
+        id: 'step-core-edge',
+        title: isVi ? 'Biên Edge -> App' : 'Edge to App Ingress',
+        activeNodes: ['caddy', 'apisix', 'keycloak', 'nocobase'],
+        activeEdges: ['c1', 'c2', 'c3'],
+        description: isVi
+          ? 'Caddy và APISIX chuyển tiếp yêu cầu đã xác thực JWKS từ mạng edge vào NocoBase trên mạng nội bộ app.'
+          : 'Caddy and APISIX validate JWKS tokens against Keycloak and forward authenticated requests from edge into NocoBase on internal app.',
+        route: 'edge (bridge) -> app (internal: true)',
+        payload: 'All images pinned to @sha256 digests in prod.yml',
+        chips: ['edge + app', 'JWKS + PKCE'],
+      },
+      {
+        id: 'step-core-data',
+        title: isVi ? 'PG16 FORCE RLS & Valkey DB 0/1/2' : 'PG16 FORCE RLS & Valkey DB 0/1/2',
+        activeNodes: ['nocobase', 'nocobase_db', 'valkey'],
+        activeEdges: ['c5', 'c6'],
+        description: isVi
+          ? 'NocoBase truy cập nocobase-db qua vai trò nocobase_app (NOBYPASSRLS) và tách biệt Valkey DB 0 (Cache), DB 1 (SSE), DB 2 (Auth).'
+          : 'NocoBase queries nocobase-db as nocobase_app (NOBYPASSRLS) and isolates Valkey DB 0 (Cache), DB 1 (SSE PubSub), and DB 2 (OIDC Auth).',
+        route: 'app -> data (internal: true)',
+        payload: '56 static + latticeCustom* FORCE RLS · No Valkey Streams',
+        chips: ['nocobase_app', 'DB 0/1/2'],
+      },
+      {
+        id: 'step-core-scanner',
+        title: isVi ? 'Scanner Cô lập -> RustFS S3' : 'Isolated Scanner -> RustFS S3',
+        activeNodes: ['nocobase', 'file_scanner', 'clamav', 'rustfs'],
+        activeEdges: ['c7', 'c8', 'c9'],
+        description: isVi
+          ? 'Tệp tải lên qua file-scanner (read_only) được ClamAV quét trên mạng scanner trước khi ghi sang phải vào RustFS trên mạng data.'
+          : 'Uploads flow L->R through read_only file-scanner to ClamAV on the isolated scanner network before clean persistence in RustFS on data.',
+        route: 'app -> scanner (internal) -> data (internal)',
+        payload: 'file-scanner:4010 -> clamav:3310 -> rustfs:9000',
+        chips: ['read_only: true', 'L->R Clean S3'],
+      },
+    ],
+  };
+
+  const optInProfilesMode: DiagramMode = {
+    id: 'opt-in-profiles',
+    label: isVi
+      ? 'Profile Tùy chọn (iiot-net, n8n, observability)'
+      : 'Opt-In Profiles (iiot-net, n8n, observability)',
+    viewBox: '0 0 1240 388',
+    zones: [
+      {
+        id: 'prof-iiot',
+        label: isVi ? 'MẠNG IIOT-NET (PROFILE: IIOT)' : 'IIOT-NET (PROFILE: IIOT)',
+        x: 16,
+        y: 16,
+        width: 240,
+        height: 224,
+        kind: 'external',
+      },
+      {
+        id: 'prof-app',
+        label: isVi ? 'MẠNG APP (INTERNAL: TRUE)' : 'APP NETWORK (INTERNAL: TRUE)',
+        x: 276,
+        y: 16,
+        width: 656,
+        height: 356,
+        kind: 'traffic',
+      },
+      {
+        id: 'prof-data',
+        label: isVi ? 'MẠNG DATA (INTERNAL: TRUE)' : 'DATA NETWORK (INTERNAL: TRUE)',
+        x: 952,
+        y: 16,
+        width: 272,
+        height: 356,
+        kind: 'admin',
+      },
+    ],
+    nodes: [
+      {
+        id: 'mosquitto',
+        title: 'Mosquitto 2.0.21',
+        sub: [':1883 · DynSec ACL', 'iiot-net only'],
+        icon: 'radio',
+        x: 32,
+        y: 56,
+        width: 208,
+        height: 64,
+        zoneId: 'prof-iiot',
+        dashed: true,
+        inspector: {
+          role: isVi ? 'Broker MQTT Nội bộ với DynSec' : 'Internal MQTT Broker with DynSec',
+          packageOrPort: 'eclipse-mosquitto:2.0.21@sha256:94f5a3... · :1883',
+          protocol: 'MQTT 3.1.1 / 5 · iiot-net internal',
+          payloadOrSchema: 'dynamic-security.json · default deny ACL',
+          responsibilities: isVi
+            ? 'Chỉ gắn vào mạng iiot-net (internal: true), xác thực thiết bị bằng Dynamic Security và phát gói LWT.'
+            : 'Attached strictly to internal iiot-net, enforcing Dynamic Security ACLs and device LWT status.',
+        },
+      },
+      {
+        id: 'nodered',
+        title: 'Node-RED 4.0.9',
+        sub: [':1880 · flows.json', 'iiot-net + app'],
+        icon: 'cpu',
+        x: 32,
+        y: 156,
+        width: 208,
+        height: 64,
+        zoneId: 'prof-iiot',
+        dashed: true,
+        inspector: {
+          role: isVi ? 'Cầu nối Chuẩn hóa & Downlink IIoT' : 'IIoT Telemetry & Downlink Bridge',
+          packageOrPort: 'nodered/node-red:4.0.9@sha256:0b295b... · :1880',
+          protocol: 'MQTT <-> HTTP · iiot-net + app',
+          payloadOrSchema: 'AES-256-CTR flows_cred.json · /twin/command',
+          responsibilities: isVi
+            ? 'Chuyển tiếp telemetry từ Mosquitto tới NocoBase :telemetryIngest và nhận lệnh downlink /twin/command.'
+            : 'Forwards Mosquitto telemetry to NocoBase :telemetryIngest and dispatches /twin/command downlinks.',
+        },
+      },
+      {
+        id: 'nocobase_opt',
+        title: 'NocoBase 2.2.50',
+        sub: ['dxosBroker · dxosN8n', 'OTel GenAI · :metrics'],
+        icon: 'layers',
+        x: 304,
+        y: 56,
+        width: 200,
+        height: 72,
+        zoneId: 'prof-app',
+        focal: true,
+        inspector: {
+          role: isVi ? 'Trung tâm Điều phối Profile Tùy chọn' : 'Optional Profile Orchestration Host',
+          packageOrPort: 'nocobase/nocobase:2.2.50 · :80',
+          protocol: 'HTTP · OTLP :4318 · Prometheus :metrics',
+          payloadOrSchema: 'dxosBroker · dxosN8n · OTel PII Scrub',
+          responsibilities: isVi
+            ? 'Điều phối dữ liệu IIoT sang Orion-LD, đồng bộ workflow sang stock n8n và xuất span OTel GenAI đã che PII.'
+            : 'Orchestrates IIoT updates to Orion-LD, syncs workflows to stock n8n, and emits PII-scrubbed OTel GenAI spans.',
+        },
+      },
+      {
+        id: 'orion_ld',
+        title: 'Orion-LD 1.12.0',
+        sub: [':1026 · NGSI-LD', 'app + data'],
+        icon: 'globe',
+        x: 588,
+        y: 56,
+        width: 216,
+        height: 72,
+        zoneId: 'prof-app',
+        inspector: {
+          role: isVi ? 'Context Broker NGSI-LD FIWARE' : 'FIWARE NGSI-LD Context Broker',
+          packageOrPort: 'fiware/orion-ld:1.12.0@sha256:f562a9... · :1026',
+          protocol: 'NGSI-LD HTTP · app + data',
+          payloadOrSchema: 'NGSILD-Tenant · entity upsert & notify',
+          responsibilities: isVi
+            ? 'Duy trì thực thể Digital Twin theo chuẩn NGSI-LD từ bộ rút PG16 Outbox 10s của NocoBase.'
+            : 'Maintains NGSI-LD Digital Twin entities synchronized by the 10s NocoBase PG16 context outbox.',
+        },
+      },
+      {
+        id: 'n8n_opt',
+        title: 'n8n 2.48.1',
+        sub: ['profile: n8n · :5678', 'REST v1 + OAuth2 PKCE'],
+        icon: 'workflow',
+        x: 380,
+        y: 164,
+        width: 208,
+        height: 72,
+        zoneId: 'prof-app',
+        dashed: true,
+        tone: 'muted',
+        inspector: {
+          role: isVi ? 'Động cơ Workflow Tích hợp Ngoài' : 'External Workflow Automation Engine',
+          packageOrPort: 'n8nio/n8n:2.48.1@sha256:5e022f... · :5678',
+          protocol: 'REST v1 + HMAC Callback · app + data',
+          payloadOrSchema: 'DX_N8N_API_URL · n8n_app PG16 DB',
+          responsibilities: isVi
+            ? 'Chạy theo profile tùy chọn n8n, sử dụng CSDL riêng n8n_app trên PostgreSQL 16 và giao tiếp qua cầu nối dxosN8n.'
+            : 'Runs under the opt-in n8n profile with its isolated n8n_app Postgres database via the dxosN8n REST v1 bridge.',
+        },
+      },
+      {
+        id: 'otel_col',
+        title: 'OTel Collector',
+        sub: ['observability', ':4318 · :8889'],
+        icon: 'activity',
+        x: 304,
+        y: 276,
+        width: 156,
+        height: 76,
+        zoneId: 'prof-app',
+        dashed: true,
+        tone: 'muted',
         inspector: {
           role: isVi ? 'Bộ thu thập Dấu vết & Chỉ số OTel' : 'OpenTelemetry Collector Contrib',
-          packageOrPort: 'otel/opentelemetry-collector-contrib:0.123.0@sha256:e39311...',
-          protocol: 'gRPC :4317 · HTTP :4318 · Prom :8889',
+          packageOrPort: 'otel/opentelemetry-collector-contrib:0.123.0 · :4318',
+          protocol: 'OTLP gRPC :4317 · HTTP :4318 · Prom :8889',
           payloadOrSchema: 'read_only: true · otel-collector.yaml:ro',
           responsibilities: isVi
-            ? 'Nhận span W3C traceparent từ NocoBase và xuất chỉ số tổng hợp trên cổng 8889 để Prometheus thu thập.'
-            : 'Ingests W3C traceparent spans from NocoBase and exposes aggregated span metrics on port 8889.',
+            ? 'Thu nhận span W3C traceparent từ NocoBase và xuất chỉ số tổng hợp trên cổng 8889 cho Prometheus.'
+            : 'Ingests W3C traceparent spans from NocoBase and exposes aggregated span metrics on port 8889 for Prometheus.',
         },
       },
       {
         id: 'prometheus',
         title: 'Prometheus 3.3',
-        sub: '4 Jobs · 5 Alerts',
+        sub: ['observability', ':9090 · 4 Jobs'],
         icon: 'cpu',
-        x: 604,
-        y: 176,
-        width: 248,
-        height: 64,
-        zoneId: 'obs-profile',
+        x: 532,
+        y: 276,
+        width: 156,
+        height: 76,
+        zoneId: 'prof-app',
+        dashed: true,
+        tone: 'muted',
         inspector: {
           role: isVi ? 'Hệ thống Thu thập Chuỗi Thời gian' : 'Metrics Scraper & Alert Evaluator',
           packageOrPort: 'prom/prometheus:v3.3.0@sha256:339ce8... · :9090',
           protocol: 'HTTP Scrape · DX_METRICS_TOKEN',
-          payloadOrSchema: '4 targets · 5 rules (alerts.yml) · 15d retention',
+          payloadOrSchema: '4 targets · 5 alerts.yml · 15d retention',
           responsibilities: isVi
-            ? 'Thu thập 4 nguồn (nocobase /api/dxos:metrics, caddy:2020, keycloak:9000, otel-collector:8889) và đánh giá 5 quy tắc cảnh báo RLS/DLQ/5xx.'
-            : 'Scrapes 4 targets (nocobase /api/dxos:metrics, caddy:2020, keycloak:9000, otel-collector:8889) and evaluates 5 RLS/DLQ/5xx alert rules.',
+            ? 'Thu thập 4 nguồn (nocobase, caddy, keycloak, otel-collector) và đánh giá 5 quy tắc cảnh báo RLS/DLQ/5xx.'
+            : 'Scrapes 4 targets (nocobase, caddy, keycloak, otel-collector) and evaluates 5 RLS/DLQ/5xx alert rules.',
         },
       },
       {
         id: 'grafana',
         title: 'Grafana 11.5.8',
-        sub: 'latticedx-360.json',
+        sub: ['observability', ':3000 · 360°'],
         icon: 'check-circle',
-        x: 604,
-        y: 336,
-        width: 248,
-        height: 64,
-        zoneId: 'obs-profile',
+        x: 760,
+        y: 276,
+        width: 156,
+        height: 76,
+        zoneId: 'prof-app',
+        dashed: true,
+        tone: 'muted',
         inspector: {
           role: isVi ? 'Bảng điều khiển Quan sát Hợp nhất' : 'Provisioned Observability Dashboards',
           packageOrPort: 'grafana/grafana-oss:11.5.8@sha256:b8121d... · :3000',
           protocol: 'PromQL · app + data',
           payloadOrSchema: 'dashboards/latticedx-360.json',
           responsibilities: isVi
-            ? 'Hiển thị bảng điều khiển latticedx-360.json dựng sẵn cho thông lượng API, lỗi RLS, hàng đợi Outbox và token AI.'
+            ? 'Hiển thị bảng điều khiển latticedx-360.json dựng sẵn theo dõi độ trễ API, lỗi RLS, outbox và token AI.'
             : 'Renders the provisioned latticedx-360.json dashboard tracking API latency, RLS errors, outbox backlog, and AI tokens.',
-        },
-      },
-    ],
-    edges: [
-      {
-        id: 'o1',
-        from: 'nocobase_obs',
-        to: 'gotenberg',
-        label: 'PDF',
-        kind: 'flow',
-        points: [
-          [128, 128],
-          [128, 176],
-        ],
-      },
-      {
-        id: 'o2',
-        from: 'nocobase_obs',
-        to: 'pgvector_rag',
-        label: 'HNSW',
-        kind: 'primary',
-        points: [
-          [204, 128],
-          [204, 154],
-          [260, 154],
-          [260, 336],
-        ],
-      },
-      {
-        id: 'o3',
-        from: 'nocobase_obs',
-        to: 'otel_collector',
-        label: 'OTLP',
-        kind: 'primary',
-        points: [
-          [172, 128],
-          [172, 144],
-          [536, 144],
-          [536, 96],
-          [604, 96],
-        ],
-      },
-      {
-        id: 'o8',
-        from: 'nocobase_obs',
-        to: 'prometheus',
-        label: ':metrics',
-        kind: 'primary',
-        points: [
-          [134, 64],
-          [134, 50],
-          [568, 50],
-          [568, 182],
-          [604, 182],
-        ],
-      },
-      {
-        id: 'o4',
-        from: 'caddy_obs',
-        to: 'prometheus',
-        label: ':2020',
-        kind: 'flow',
-        points: [
-          [484, 108],
-          [542, 108],
-          [542, 198],
-          [604, 198],
-        ],
-      },
-      {
-        id: 'o5',
-        from: 'keycloak_obs',
-        to: 'prometheus',
-        label: ':9000',
-        kind: 'flow',
-        points: [
-          [484, 214],
-          [604, 214],
-        ],
-      },
-      {
-        id: 'o6',
-        from: 'otel_collector',
-        to: 'prometheus',
-        label: ':8889',
-        kind: 'primary',
-        points: [
-          [728, 128],
-          [728, 176],
-        ],
-      },
-      {
-        id: 'o7',
-        from: 'prometheus',
-        to: 'grafana',
-        label: 'PromQL',
-        kind: 'primary',
-        points: [
-          [728, 240],
-          [728, 336],
-        ],
-      },
-    ],
-    steps: [
-      {
-        id: 'step-otel',
-        title: isVi ? 'OTel GenAI & Che PII Trước Xuất' : 'OTel GenAI & Pre-Export PII Scrubbing',
-        activeNodes: ['nocobase_obs', 'otel_collector'],
-        activeEdges: ['o3'],
-        description: isVi
-          ? 'NocoBase gom tối đa 256 span (lô 64, xả mỗi 5s), che CCCD/Phone/Bank/MST/JWT/Email rồi đẩy qua OTLP :4318.'
-          : 'NocoBase buffers up to 256 spans (batch 64, 5s flush), redacts CCCD/Phone/Bank/MST/JWT/Email, and exports via OTLP :4318.',
-        route: 'POST http://otel-collector:4318/v1/traces',
-        payload: 'gen_ai.system · gen_ai.request.model · traceparent',
-        chips: ['PII Scrubbed', 'profile: observability'],
-      },
-      {
-        id: 'step-prom',
-        title: isVi ? 'Thu thập 4 Nguồn & Grafana 360' : '4-Target Prometheus Scrape & Grafana',
-        activeNodes: ['nocobase_obs', 'caddy_obs', 'keycloak_obs', 'otel_collector', 'prometheus', 'grafana'],
-        activeEdges: ['o8', 'o4', 'o5', 'o6', 'o7'],
-        description: isVi
-          ? 'Prometheus 3.3 thu thập đủ 4 nguồn: nocobase (/api/dxos:metrics), caddy:2020, keycloak:9000 và otel-collector:8889, cấp dữ liệu cho Grafana.'
-          : 'Prometheus 3.3 scrapes all 4 targets: nocobase (/api/dxos:metrics), caddy:2020, keycloak:9000, and otel-collector:8889 for Grafana.',
-        route: 'GET /api/dxos:metrics (DX_METRICS_TOKEN)',
-        payload: '4 targets · 5 alerts.yml · 15d retention',
-        chips: ['latticedx-360.json', '4 Scrape Jobs'],
-      },
-      {
-        id: 'step-pdf-rag',
-        title: isVi ? 'Gotenberg PDF & Vector pgvector' : 'Gotenberg PDF & pgvector HNSW Store',
-        activeNodes: ['nocobase_obs', 'gotenberg', 'pgvector_rag'],
-        activeEdges: ['o1', 'o2'],
-        description: isVi
-          ? 'Profile pdf chạy Gotenberg tắt JavaScript để xuất chứng từ, còn pgvector 0.8.1 lưu vector 1536 chiều cho Hybrid RAG.'
-          : 'The pdf profile runs JS-disabled Gotenberg for voucher exports while pgvector 0.8.1 stores 1536-dim Hybrid RAG embeddings.',
-        route: 'http://gotenberg:3000 | pgvector:5432',
-        payload: '--chromium-disable-javascript=true · HNSW 1536d',
-        chips: ['profile: pdf', 'pgvector 0.8.1'],
-      },
-    ],
-  };
-
-  const iiotN8nMode: DiagramMode = {
-    id: 'iiot-n8n',
-    label: isVi ? 'IIoT & Integration' : 'IIoT & Integration',
-    summary: isVi
-      ? 'Mạng iiot-net · Profile iiot + n8n · Orion-LD NGSI-LD · Outbox'
-      : 'iiot-net · iiot + n8n profiles · Orion-LD NGSI-LD · Outbox',
-    zones: [
-      {
-        id: 'net-iiot',
-        label: isVi ? 'MẠNG IIOT-NET INTERNAL (PROFILE: IIOT)' : 'IIOT-NET INTERNAL (PROFILE: IIOT)',
-        x: 16,
-        y: 16,
-        width: 416,
-        height: 152,
-        kind: 'traffic',
-      },
-      {
-        id: 'net-app-iiot',
-        label: isVi ? 'MẠNG APP INTERNAL (BROKER + ORION-LD)' : 'APP INTERNAL (BROKER + ORION-LD)',
-        x: 452,
-        y: 16,
-        width: 452,
-        height: 152,
-        kind: 'traffic',
-      },
-      {
-        id: 'net-data-iiot',
-        label: isVi ? 'MẠNG DATA INTERNAL (PG16 OUTBOX + MONGO)' : 'DATA INTERNAL (PG16 OUTBOX + MONGO)',
-        x: 16,
-        y: 224,
-        width: 560,
-        height: 204,
-        kind: 'admin',
-      },
-      {
-        id: 'net-n8n',
-        label: isVi ? 'PROFILE: N8N (APP + DATA)' : 'PROFILE: N8N (APP + DATA)',
-        x: 616,
-        y: 224,
-        width: 288,
-        height: 204,
-        kind: 'external',
-      },
-    ],
-    nodes: [
-      {
-        id: 'mosquitto',
-        title: 'Mosquitto 2.0',
-        sub: ':1883 · DynSec',
-        icon: 'radio',
-        x: 36,
-        y: 64,
-        width: 156,
-        height: 64,
-        zoneId: 'net-iiot',
-        inspector: {
-          role: isVi ? 'Broker MQTT Nội bộ với DynSec' : 'Internal MQTT Broker with DynSec',
-          packageOrPort: 'eclipse-mosquitto:2.0.21@sha256:94f5a3... · :1883',
-          protocol: 'MQTT 3.1.1/5 · iiot-net internal',
-          payloadOrSchema: 'init-dynsec.sh · LWT + ACLs',
-          responsibilities: isVi
-            ? 'Chỉ gắn vào iiot-net (internal: true), xác thực thiết bị bằng Dynamic Security (DynSec) và xử lý Last Will (LWT).'
-            : 'Attached strictly to internal iiot-net, enforcing Dynamic Security (DynSec) ACLs and device LWT status.',
-        },
-      },
-      {
-        id: 'nodered',
-        title: 'Node-RED 4.0.9',
-        sub: ':1880 · @sha256',
-        icon: 'cpu',
-        x: 248,
-        y: 64,
-        width: 164,
-        height: 64,
-        zoneId: 'net-iiot',
-        inspector: {
-          role: isVi ? 'Cổng Chuẩn hóa & Lệnh Downlink IIoT' : 'IIoT Normalization & Downlink Bridge',
-          packageOrPort: 'nodered/node-red:4.0.9@sha256:0b295b... · :1880',
-          protocol: 'MQTT <-> HTTP · iiot-net + app',
-          payloadOrSchema: 'AES-256-CTR flows_cred.json · /twin/command',
-          responsibilities: isVi
-            ? 'Chuẩn hóa đo từ xa từ Mosquitto đẩy về NocoBase bằng DX_IIOT_INGEST_TOKEN và nhận lệnh downlink điều khiển thiết bị.'
-            : 'Normalizes Mosquitto telemetry into NocoBase via DX_IIOT_INGEST_TOKEN and dispatches /twin/command downlinks.',
-        },
-      },
-      {
-        id: 'nocobase_iiot',
-        title: 'NocoBase 2.2.50',
-        sub: 'dxosBroker · dxosN8n',
-        icon: 'layers',
-        x: 472,
-        y: 64,
-        width: 180,
-        height: 64,
-        zoneId: 'net-app-iiot',
-        focal: true,
-        inspector: {
-          role: isVi ? 'Trung tâm Điều phối IIoT & n8n' : 'IIoT Twin & n8n Orchestration Host',
-          packageOrPort: 'nocobase:2.2.50 · SSRF Allowlists',
-          protocol: 'HTTP · iiot-net + app + data',
-          payloadOrSchema: 'DX_ORION_HOST_ALLOWLIST · DX_NODERED_HOST_ALLOWLIST',
-          responsibilities: isVi
-            ? 'Kiểm tra allowlist chống SSRF khi gọi Orion-LD/Node-RED, ghi latticeContextOutbox và cầu nối OAuth2 PKCE sang n8n.'
-            : 'Enforces SSRF host allowlists for Orion-LD/Node-RED, records latticeContextOutbox, and bridges OAuth2 PKCE to n8n.',
-        },
-      },
-      {
-        id: 'orion_ld',
-        title: 'Orion-LD 1.12',
-        sub: '@sha256 · :1026 NGSI',
-        icon: 'plug',
-        x: 704,
-        y: 64,
-        width: 180,
-        height: 64,
-        zoneId: 'net-app-iiot',
-        inspector: {
-          role: isVi ? 'Context Broker NGSI-LD FIWARE' : 'FIWARE NGSI-LD Context Broker',
-          packageOrPort: 'fiware/orion-ld:1.12.0@sha256:f562a9... · :1026',
-          protocol: 'NGSI-LD HTTP · app + data',
-          payloadOrSchema: 'Entity upsert & relationship DELETE sync',
-          responsibilities: isVi
-            ? 'Duy trì thực thể Digital Twin theo chuẩn NGSI-LD từ bộ rút outbox 10s của NocoBase.'
-            : 'Maintains NGSI-LD Digital Twin entities synchronized by the 10s NocoBase context outbox drainer.',
-        },
-      },
-      {
-        id: 'pg16_outbox',
-        title: 'PG16 Outbox',
-        sub: 'FOR UPDATE SKIP LOCKED',
-        icon: 'database',
-        x: 36,
-        y: 288,
-        width: 236,
-        height: 64,
-        zoneId: 'net-data-iiot',
-        inspector: {
-          role: isVi ? 'Hàng đợi Outbox FIFO theo Thực thể' : 'Per-Entity FIFO Transactional Outbox',
-          packageOrPort: 'nocobase-db · latticeContextOutbox',
-          protocol: 'SQL · FOR UPDATE OF o SKIP LOCKED',
-          payloadOrSchema: '10s drainer · 120s stale lock · 5 retries -> dlq',
-          responsibilities: isVi
-            ? 'Đảm bảo thứ tự FIFO cho từng thực thể twin, tự thu hồi khóa treo quá 120s và đẩy vào DLQ sau 5 lần thử thất bại.'
-            : 'Guarantees per-entity FIFO ordering, reclaims locks older than 120s, and moves failed deliveries to DLQ after 5 attempts.',
         },
       },
       {
         id: 'orion_mongo',
         title: 'MongoDB 8.0',
-        sub: '@sha256 · SCRAM-SHA',
+        sub: [':27017 · SCRAM-SHA-256', 'Orion-LD Backing Store'],
         icon: 'server',
-        x: 320,
-        y: 288,
-        width: 224,
-        height: 64,
-        zoneId: 'net-data-iiot',
+        x: 968,
+        y: 56,
+        width: 240,
+        height: 72,
+        zoneId: 'prof-data',
         inspector: {
           role: isVi ? 'Kho Lưu trữ Orion-LD' : 'Orion-LD Backing Store',
           packageOrPort: 'mongo:8.0@sha256:479e85... · :27017',
           protocol: 'MongoDB Wire · SCRAM-SHA-256 · data internal',
           payloadOrSchema: '1024m / 1.0 CPU · orion-mongo-data',
           responsibilities: isVi
-            ? 'Lưu trạng thái thực thể NGSI-LD cho Orion-LD trên mạng data nội bộ với xác thực SCRAM-SHA-256.'
-            : 'Persists NGSI-LD entity state for Orion-LD on the internal data network with SCRAM-SHA-256 auth.',
+            ? 'Lưu trạng thái thực thể NGSI-LD cho Orion-LD hoàn toàn trên mạng data nội bộ.'
+            : 'Persists NGSI-LD entity state for Orion-LD strictly inside the internal data network.',
         },
       },
       {
-        id: 'n8n_engine',
-        title: 'n8n 2.48.1',
-        sub: '@sha256 · :5678 REST v1',
-        icon: 'workflow',
-        x: 656,
-        y: 288,
-        width: 208,
-        height: 64,
-        zoneId: 'net-n8n',
+        id: 'postgres_n8n',
+        title: 'PostgreSQL 16.16',
+        sub: ['n8n_app DB · :5432', 'Isolated Profile DB'],
+        icon: 'database',
+        x: 968,
+        y: 164,
+        width: 240,
+        height: 72,
+        zoneId: 'prof-data',
         inspector: {
-          role: isVi ? 'Động cơ Workflow Tích hợp Ngoài' : 'External Workflow Automation Engine',
-          packageOrPort: 'n8nio/n8n:2.48.1@sha256:5e022f... · :5678',
-          protocol: 'REST v1 + OAuth2 PKCE · app + data',
-          payloadOrSchema: 'DX_N8N_API_URL · n8n_app PG16 DB',
+          role: isVi ? 'CSDL Tách biệt cho Profile n8n' : 'Isolated Profile Database for n8n',
+          packageOrPort: 'postgres:16.16-alpine · :5432',
+          protocol: 'PostgreSQL Wire · data internal',
+          payloadOrSchema: 'n8n_app database',
           responsibilities: isVi
-            ? 'Chạy trong profile tùy chọn n8n, dùng CSDL riêng n8n_app trên Postgres và kết nối qua cầu nối dxosN8n.'
-            : 'Runs under the optional n8n profile with its isolated n8n_app Postgres database, connected via dxosN8n.',
+            ? 'Lưu trạng thái thực thi của stock n8n tách biệt khỏi cụm dữ liệu tenant nocobase-db.'
+            : 'Stores stock n8n execution state isolated from the nocobase-db tenant cluster.',
+        },
+      },
+      {
+        id: 'nocobase_db_opt',
+        title: 'nocobase-db (PG16)',
+        sub: ['pgvector 0.8.1 · :5432', 'Context Outbox · AiTraces'],
+        icon: 'database',
+        x: 968,
+        y: 276,
+        width: 240,
+        height: 76,
+        zoneId: 'prof-data',
+        inspector: {
+          role: isVi ? 'Outbox PG16 & Kho Dấu vết AI' : 'PG16 Context Outbox & AI Trace Store',
+          packageOrPort: 'pgvector/pgvector:0.8.1-pg16 · :5432',
+          protocol: 'PostgreSQL + HNSW · data internal',
+          payloadOrSchema: 'latticeContextOutbox · latticeAiTraces',
+          responsibilities: isVi
+            ? 'Lưu hàng đợi latticeContextOutbox (rút mỗi 10s bằng SKIP LOCKED) và dấu vết suy luận AI.'
+            : 'Stores latticeContextOutbox (drained every 10s via SKIP LOCKED) alongside AI execution traces.',
         },
       },
     ],
     edges: [
-      { id: 'i1', from: 'mosquitto', to: 'nodered', label: 'MQTT', kind: 'flow' },
-      { id: 'i2', from: 'nodered', to: 'nocobase_iiot', label: 'Ingest', kind: 'primary' },
       {
-        id: 'i3',
-        from: 'nocobase_iiot',
+        id: 'p1',
+        from: 'mosquitto',
         to: 'nodered',
-        label: 'Downlink',
+        label: 'MQTT :1883',
         kind: 'flow',
         points: [
-          [500, 128],
-          [500, 152],
-          [332, 152],
-          [332, 128],
+          [136, 120],
+          [136, 156],
         ],
       },
       {
-        id: 'i4',
-        from: 'nocobase_iiot',
-        to: 'pg16_outbox',
-        label: 'Outbox',
+        id: 'p2',
+        from: 'nodered',
+        to: 'nocobase_opt',
+        label: 'Ingest',
         kind: 'primary',
         points: [
-          [548, 128],
-          [548, 184],
-          [156, 184],
-          [156, 288],
+          [240, 188],
+          [264, 188],
+          [264, 86],
+          [304, 86],
         ],
       },
-      { id: 'i5', from: 'nocobase_iiot', to: 'orion_ld', label: 'NGSI', kind: 'primary' },
       {
-        id: 'i6',
+        id: 'p3',
+        from: 'nocobase_opt',
+        to: 'orion_ld',
+        label: 'NGSI-LD',
+        kind: 'primary',
+        points: [
+          [504, 92],
+          [588, 92],
+        ],
+      },
+      {
+        id: 'p4',
         from: 'orion_ld',
         to: 'orion_mongo',
         label: 'SCRAM',
         kind: 'flow',
         points: [
-          [792, 128],
-          [792, 204],
-          [432, 204],
-          [432, 288],
+          [804, 92],
+          [968, 92],
         ],
       },
       {
-        id: 'i7',
-        from: 'nocobase_iiot',
-        to: 'n8n_engine',
+        id: 'p5',
+        from: 'nocobase_opt',
+        to: 'n8n_opt',
         label: 'REST v1',
         kind: 'dashed',
         points: [
-          [596, 128],
-          [596, 320],
-          [656, 320],
+          [440, 128],
+          [440, 164],
+        ],
+      },
+      {
+        id: 'p6',
+        from: 'n8n_opt',
+        to: 'postgres_n8n',
+        label: 'n8n_app',
+        kind: 'dashed',
+        points: [
+          [588, 200],
+          [968, 200],
+        ],
+      },
+      {
+        id: 'p7',
+        from: 'nocobase_opt',
+        to: 'otel_col',
+        label: 'OTLP :4318',
+        kind: 'dashed',
+        points: [
+          [324, 128],
+          [324, 276],
+        ],
+      },
+      {
+        id: 'p8',
+        from: 'otel_col',
+        to: 'prometheus',
+        label: ':8889',
+        kind: 'flow',
+        points: [
+          [460, 314],
+          [532, 314],
+        ],
+      },
+      {
+        id: 'p9',
+        from: 'prometheus',
+        to: 'grafana',
+        label: 'PromQL',
+        kind: 'flow',
+        points: [
+          [688, 314],
+          [760, 314],
+        ],
+      },
+      {
+        id: 'p10',
+        from: 'nocobase_opt',
+        to: 'nocobase_db_opt',
+        label: 'Outbox',
+        kind: 'primary',
+        labelPosition: 0.65,
+        points: [
+          [504, 116],
+          [544, 116],
+          [544, 144],
+          [620, 144],
+          [620, 254],
+          [942, 254],
+          [942, 314],
+          [968, 314],
         ],
       },
     ],
     steps: [
       {
-        id: 'step-iiot-up',
-        title: isVi ? 'Mạng iiot-net -> NocoBase Broker' : 'iiot-net Telemetry to NocoBase',
-        activeNodes: ['mosquitto', 'nodered', 'nocobase_iiot'],
-        activeEdges: ['i1', 'i2'],
+        id: 'step-opt-iiot',
+        title: isVi ? 'Profile iiot & Orion-LD' : 'iiot Profile & Orion-LD Sync',
+        activeNodes: ['mosquitto', 'nodered', 'nocobase_opt', 'orion_ld', 'orion_mongo', 'nocobase_db_opt'],
+        activeEdges: ['p1', 'p2', 'p3', 'p4', 'p10'],
         description: isVi
-          ? 'Mosquitto 2.0 (DynSec) cô lập hoàn toàn trên iiot-net chuyển gói MQTT qua Node-RED (AES-256-CTR) về NocoBase.'
-          : 'Mosquitto 2.0 (DynSec) isolated on iiot-net forwards telemetry via Node-RED (AES-256-CTR credentials) to NocoBase.',
-        route: 'iiot-net (internal: true) -> app',
-        payload: 'Authorization: Bearer ${DX_IIOT_INGEST_TOKEN}',
-        chips: ['profile: iiot', 'DynSec + LWT'],
+          ? 'Mosquitto 2.0 (DynSec) cô lập trên iiot-net gửi dữ liệu qua Node-RED về NocoBase, ghi PG16 Context Outbox và đồng bộ sang Orion-LD + MongoDB 8.0.'
+          : 'Mosquitto 2.0 (DynSec) on isolated iiot-net feeds Node-RED into NocoBase, persisting PG16 Context Outbox before syncing Orion-LD and MongoDB 8.0.',
+        route: 'iiot-net -> app -> data (internal: true)',
+        payload: 'FOR UPDATE OF o SKIP LOCKED · SCRAM-SHA-256',
+        chips: ['profile: iiot', 'DynSec + NGSI-LD'],
       },
       {
-        id: 'step-iiot-outbox',
-        title: isVi ? 'Đồng bộ Outbox PG16 -> Orion-LD' : 'PG16 Outbox FIFO -> Orion-LD Sync',
-        activeNodes: ['nocobase_iiot', 'pg16_outbox', 'orion_ld', 'orion_mongo'],
-        activeEdges: ['i4', 'i5', 'i6'],
+        id: 'step-opt-n8n',
+        title: isVi ? 'Profile n8n Tùy chọn' : 'Opt-In n8n Profile',
+        activeNodes: ['nocobase_opt', 'n8n_opt', 'postgres_n8n'],
+        activeEdges: ['p5', 'p6'],
         description: isVi
-          ? 'Bộ rút 10s dùng FOR UPDATE OF o SKIP LOCKED đồng bộ thực thể NGSI-LD sang Orion-LD và MongoDB 8.0 (SCRAM-SHA-256).'
-          : 'The 10s drainer uses FOR UPDATE OF o SKIP LOCKED to sync NGSI-LD entities to Orion-LD and MongoDB 8.0 (SCRAM-SHA-256).',
-        route: 'http://orion-ld:1026 | latticeContextOutbox',
-        payload: "eventId = 'native-' + sha256(projection) · 120s stale reclaim",
-        chips: ['FOR UPDATE SKIP LOCKED', 'Per-Entity FIFO'],
+          ? 'Stock n8n 2.48.1 chạy trên mạng app/data với CSDL riêng n8n_app, đồng bộ credentials và workflow từ cầu nối dxosN8n.'
+          : 'Stock n8n 2.48.1 runs on app/data with its own n8n_app Postgres database, synchronized from dxosN8n over REST v1.',
+        route: 'dxosN8n -> http://n8n:5678/api/v1 -> postgres (n8n_app)',
+        payload: 'OAuth2 PKCE + AES-256-GCM Vault',
+        chips: ['profile: n8n', 'Isolated n8n_app'],
       },
       {
-        id: 'step-iiot-down',
-        title: isVi ? 'Lệnh Downlink & Cầu nối n8n' : 'Digital-Twin Downlink & n8n Bridge',
-        activeNodes: ['nocobase_iiot', 'nodered', 'n8n_engine'],
-        activeEdges: ['i3', 'i7'],
+        id: 'step-opt-obs',
+        title: isVi ? 'Profile observability' : 'Opt-In observability Profile',
+        activeNodes: ['nocobase_opt', 'otel_col', 'prometheus', 'grafana'],
+        activeEdges: ['p7', 'p8', 'p9'],
         description: isVi
-          ? 'NocoBase kiểm tra SSRF allowlist trước khi gửi lệnh /twin/command tới Node-RED hoặc kích hoạt luồng ngoài qua profile n8n.'
-          : 'NocoBase validates SSRF allowlists before sending /twin/command downlinks to Node-RED or dispatching flows to the n8n profile.',
-        route: 'http://nodered:1880/twin/command | http://n8n:5678/api/v1',
-        payload: 'DX_NODERED_HOST_ALLOWLIST · DX_N8N_API_URL',
-        chips: ['SSRF Guard', 'profile: n8n'],
+          ? 'NocoBase che PII trước khi đẩy span OTLP :4318 sang OTel Collector; Prometheus 3.3 thu thập chỉ số và cấp dữ liệu cho Grafana.'
+          : 'NocoBase scrubs PII before shipping OTLP :4318 spans to OTel Collector; Prometheus 3.3 scrapes metrics for Grafana latticedx-360.',
+        route: 'OTLP :4318 -> OTel :8889 -> Prometheus :9090 -> Grafana :3000',
+        payload: 'PII Scrubbed · 4 Scrape Jobs · 5 Alerts',
+        chips: ['profile: observability', 'latticedx-360.json'],
       },
     ],
   };
 
-  return [coreEdgeMode, aiObsMode, iiotN8nMode];
+  return [coreNetworksMode, optInProfilesMode];
 });
 </script>
 
@@ -989,7 +906,6 @@ const modes = computed<DiagramMode[]>(() => {
   <DiagramCanvas
     :title="title"
     :caption="caption"
-    viewBox="0 0 960 444"
     :modes="modes"
     :lang="resolvedLang"
   />
